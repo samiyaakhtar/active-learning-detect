@@ -6,3 +6,8 @@ Install [Node.js and npm](https://nodejs.org/en/) (v8.9.4 or higher) if they are
 in a terminal/console window. Older versions may produce errors.
 
 ## Steps to build it
+
+1. cd into the static folder and run `npm install`, then  `npm run build`
+2. cd ..
+3. cd into the server folder and initialize a new virtualenv
+4. `python server.py`
