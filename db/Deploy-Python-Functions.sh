@@ -26,8 +26,6 @@ if [[ "$StorageName" != *[a-z0-9]* ]]; then
     exit 1
 fi
 
-
-#$filtered_output=$(az extension list)
 # See http://jmespath.org/tutorial.html for querying
 filtered_output=$(az extension list --query "[?name=='functionapp'].name")
 
@@ -59,7 +57,6 @@ echo
 echo "Create a storage account for the function (if it does not exist for the current subscription)"
 echo
 az storage account create -n $StorageName -l "WestUS" -g $ResourceGroup --sku Standard_LRS
-
 
 echo
 echo "Create a function app (if it does not exist for the current subscription)"

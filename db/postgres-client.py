@@ -44,27 +44,28 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 def generate_test_image_infos(count):
     list_of_image_infos = []
     for i in range(count):
-        file_name = f'{id_generator(size=random.randint(4,10))}.jpg'
-        image_location = f'https://mock-storage.blob.core.windows.net/new-uploads/{file_name}'
+        file_name = "{0}.jpg".format(id_generator(size=random.randint(4,10)))
+        image_location = "https://mock-storage.blob.core.windows.net/new-uploads/{0}".format(file_name)
         img = ImageInfo(file_name,image_location,random.randint(100,600),random.randint(100,600))
         list_of_image_infos.append(img)
     return list_of_image_infos
 
-def get_image_ids_for_new_images(conn, list_of_image_infos):
+# TODO: Use bulk insert: https://stackoverflow.com/questions/5875953/returning-multiple-serial-values-from-posgtres-batch-insert
+def get_image_ids_for_new_images(conn, list_of_image_infos, user_id):
     url_to_image_id_map = {}
-    if(len(list_of_image_infos) > 0):
+    if(len(list_of_image_infos) > 0 and user_id):
         cursor = conn.cursor()
         for img in list(list_of_image_infos):
-            query = "INSERT INTO Image_Info (OriginalImageName,ImageLocation,Height,Width) VALUES ('{0}','{1}',{2},{3}) RETURNING ImageId;"
-            cursor.execute(query.format(img.image_name,img.image_location,str(img.height),str(img.width)))
+            query = "INSERT INTO Image_Info (OriginalImageName,ImageLocation,Height,Width,CreatedByUser) VALUES ('{0}','{1}',{2},{3},{4}) RETURNING ImageId;"
+            cursor.execute(query.format(img.image_name,img.image_location,str(img.height),str(img.width),user_id))
             new_img_id = cursor.fetchone()[0]
             url_to_image_id_map[img.image_location] = new_img_id
             #__update_images(conn,[new_img_id],ImageTagState.NOT_READY)
         conn.commit()
-    print(f"Inserted {len(url_to_image_id_map)} images to the DB")
+    print("Inserted {0} images to the DB".format(len(url_to_image_id_map)))
     return url_to_image_id_map
 
-def get_new_images(conn,number_of_images):
+def get_new_images(conn,number_of_images, user_id):
     cursor = conn.cursor()
 
     # GET N existing UNTAGGED rows
@@ -77,37 +78,39 @@ def get_new_images(conn,number_of_images):
         print('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
         selected_images_to_tag[str(row[0])] = str(row[1])
 
-    __update_images(conn,selected_images_to_tag,ImageTagState.TAG_IN_PROGRESS)
+    __update_images(conn,selected_images_to_tag,ImageTagState.TAG_IN_PROGRESS, user_id)
     return selected_images_to_tag.values()
 
-def update_image_urls(conn,image_id_to_url_map):
-     for image_id, new_url in image_id_to_url_map.items():
-        cursor = conn.cursor()
-        query = "UPDATE Image_Info SET ImageLocation = '{0}', ModifiedDtim = now() WHERE ImageId = {1}"
-        cursor.execute(query.format(new_url,image_id))
-        print(f"Updated ImageId: {image_id} to new ImageLocation: {new_url}")
-        __update_images(conn,[image_id],ImageTagState.READY_TO_TAG)
-        print(f"ImageId: {image_id} to has a new state: {ImageTagState.READY_TO_TAG.name}")
-        conn.commit()
+def update_image_urls(conn,image_id_to_url_map, user_id):
+    if(len(image_id_to_url_map.items()) and user_id):
+        for image_id, new_url in image_id_to_url_map.items():
+            cursor = conn.cursor()
+            query = "UPDATE Image_Info SET ImageLocation = '{0}', ModifiedDtim = now() WHERE ImageId = {1}"
+            cursor.execute(query.format(new_url,image_id))
+            conn.commit()
+            print("Updated ImageId: {0} to new ImageLocation: {1}".format(image_id,new_url))
+            __update_images(conn,[image_id],ImageTagState.READY_TO_TAG, user_id)
+            print("ImageId: {0} to has a new state: {1}".format(image_id,ImageTagState.READY_TO_TAG.name))
         
-def update_tagged_images(conn,list_of_image_ids):
-    __update_images(conn,list_of_image_ids,ImageTagState.COMPLETED_TAG)
-    print(f"Updated {len(list_of_image_ids)} image(s) to the state {ImageTagState.COMPLETED_TAG.name}")
+        
+def update_tagged_images(conn,list_of_image_ids, user_id):
+    __update_images(conn,list_of_image_ids,ImageTagState.COMPLETED_TAG,user_id)
+    print("Updated {0} image(s) to the state {1}".format(len(list_of_image_ids),ImageTagState.COMPLETED_TAG.name))
 
-def update_untagged_images(conn,list_of_image_ids):
-    __update_images(conn,list_of_image_ids,ImageTagState.INCOMPLETE_TAG)
-    print(f"Updated {len(list_of_image_ids)} image(s) to the state {ImageTagState.INCOMPLETE_TAG.name}")
+def update_untagged_images(conn,list_of_image_ids, user_id):
+    __update_images(conn,list_of_image_ids,ImageTagState.INCOMPLETE_TAG,user_id)
+    print("Updated {0} image(s) to the state {1}".format(len(list_of_image_ids),ImageTagState.INCOMPLETE_TAG.name))
 
-def __update_images(conn, list_of_image_ids, new_image_tag_state):
+def __update_images(conn, list_of_image_ids, new_image_tag_state, user_id):
     if not isinstance(new_image_tag_state, ImageTagState):
         raise TypeError('new_image_tag_state must be an instance of Direction Enum')
 
-    if(len(list_of_image_ids) > 0):
+    if(len(list_of_image_ids) > 0 and user_id):
         cursor = conn.cursor()
         image_ids_as_strings = [str(i) for i in list_of_image_ids]
         images_to_update = '{0}'.format(', '.join(image_ids_as_strings))
-        query = "UPDATE Image_Tagging_State SET TagStateId = {0}, ModifiedDtim = now() WHERE ImageId IN ({1})"
-        cursor.execute(query.format(new_image_tag_state,images_to_update))
+        query = "UPDATE Image_Tagging_State SET TagStateId = {0}, ModifiedByUser = {2}, ModifiedDtim = now() WHERE ImageId IN ({1})"
+        cursor.execute(query.format(new_image_tag_state,images_to_update,user_id))
         conn.commit()
         #print(f"Updated {len(list_of_image_ids)} image(s) to the state {new_image_tag_state.name}")
     else:
@@ -127,21 +130,35 @@ def pretty_print_audit_history(conn, list_of_image_ids):
         cursor = conn.cursor()
         image_ids_as_strings = [str(i) for i in list_of_image_ids]
         images_to_audit = '{0}'.format(', '.join(image_ids_as_strings))
-        query = ("SELECT a.imageid,c.originalimagename, b.tagstatename, a.ArchiveDtim FROM image_tagging_state_audit a "
+        query = ("SELECT a.imageid,c.originalimagename, b.tagstatename, d.username, a.ArchiveDtim FROM image_tagging_state_audit a "
                 "JOIN tagstate b ON a.tagstateid = b.tagstateid "
                 "JOIN image_info c on a.imageid = c.imageid "
+                "JOIN user_info d on a.modifiedbyuser = d.userid "
                 "WHERE a.ImageId in ({0}) "
                 "ORDER BY a.ImageId,ArchiveDtim ASC")
         cursor.execute(query.format(images_to_audit))
         row = cursor.fetchone()  
         print()
         if(row != None):
-            print("ImageId\t\tOriginalImageName\t\tTagState\t\tTransitionTime")
+            print("ImageId\tImgName\tTagState\tUser\tLoggedTime")
         while row:  
-            print(f"{str(row[0])}\t\t{str(row[1])}\t\t{str(row[2])}\t\t{str(row[3])}")  
+            print("{0}\t{1}\t{2}\t{3}\t{4}".format(str(row[0]),str(row[1]),str(row[2]),str(row[3]),str(row[4])))  
             row = cursor.fetchone()
     else:
         print("No images!")
+
+def create_user(conn,user_name):
+    user_id = -1
+    if user_name:
+        try:
+            cursor = conn.cursor()
+            query = "INSERT INTO User_Info (UserName) VALUES ('{0}') ON CONFLICT (username) DO UPDATE SET username=EXCLUDED.username  RETURNING UserId;"
+            cursor.execute(query.format(user_name))
+            user_id = cursor.fetchone()[0]
+            conn.commit()
+        except Exception as e: print(e)
+        finally: cursor.close()
+    return user_id
 
 def extract_image_name_no_suffix(url):
     start_idx = url.rfind('/')+1
@@ -155,19 +172,30 @@ def extract_image_id_from_urls(list_of_image_urls):
             extracted_image_ids.append(extracted_id)
         return extracted_image_ids
 
-def main():
+def main(num_of_images,user_name):
     try:
         if(os.getenv("DB_HOST") is None or os.getenv("DB_USER") is None or os.getenv("DB_NAME") is None or os.getenv("DB_PASS") is None):
             print("Please set environment variables for DB_HOST, DB_USER, DB_NAME, DB_PASS")
             return
+        
+        if(num_of_images < 5 or num_of_images > 20):
+            print("Number of images should be between 5 and 20")
+            return
+
+        if(not user_name):
+            print("User name cannot be empty or whitespace")
+            return
         #################################################################
         # Below we simulate the following scenarios:
+        #   Creating a User
         #   Onboarding of new images
         #   Checking out images to tag
         #   Checking in images that have or have not been tagged
         #################################################################   
 
-        NUMBER_OF_IMAGES = 5
+        user_id = create_user(get_connection(),user_name)
+
+        NUMBER_OF_IMAGES = num_of_images
         
         # Simulate new images from VOTT getting created in some blob store
         mocked_images = generate_test_image_infos(NUMBER_OF_IMAGES)
@@ -177,9 +205,9 @@ def main():
         print()
         # Simulate the data access layer creating entries in the DB for the new images
         # and returning a map of the original image url to generaled image id 
-        url_to_image_id_map = get_image_ids_for_new_images(get_connection(),mocked_images)
+        url_to_image_id_map = get_image_ids_for_new_images(get_connection(),mocked_images, user_id)
         print()
-
+        
         print("***\tBehind the scenes Az Functions move the images to a new blob location")
         time.sleep(1)
         print()
@@ -192,7 +220,7 @@ def main():
         
         # Simulates the call the client makes to the data access layer
         # with the new payload. Image urls get updated in the DB
-        update_image_urls(get_connection(),updated_image_id_url_map)
+        update_image_urls(get_connection(),updated_image_id_url_map, user_id)
         
         print()
         print("***\tThe newly uploaded images are now onboarded with a 'ready to tag' state.  See audit history")
@@ -205,12 +233,12 @@ def main():
         pretty_print_audit_history(get_connection(),image_ids)
         time.sleep(3)
         print()
-
+        
         print("***\tSubject matter experts use the CLI to retrieve images in a 'ready to tag' state")
         time.sleep(2)
         print()
-
-        list_of_image_urls = get_new_images(get_connection(),NUMBER_OF_IMAGES)
+        
+        list_of_image_urls = get_new_images(get_connection(),NUMBER_OF_IMAGES, user_id)
         print()
         print("***\tLet's wait for image taggers to get through the set of images....")
         time.sleep(5)
@@ -230,14 +258,15 @@ def main():
         # call corresponding methods to update tagged and untagged states
         completed_tagged_ids = []
         incomplete_tagged_ids = []
+        num_of_incomplete = NUMBER_OF_IMAGES/5
         for idx, img_id in enumerate(extracted_image_ids):
-            if(idx > 2):
-                incomplete_tagged_ids.append(img_id)
-            else:
+            if(idx > num_of_incomplete):
                 completed_tagged_ids.append(img_id)
+            else:
+                incomplete_tagged_ids.append(img_id)
 
-        update_tagged_images(get_connection(),completed_tagged_ids)
-        update_untagged_images(get_connection(),incomplete_tagged_ids)
+        update_tagged_images(get_connection(),completed_tagged_ids,user_id)
+        update_untagged_images(get_connection(),incomplete_tagged_ids,user_id)
         
         print()
         print("***\tVOTT json results are posted. Lets take a look at the audit history")
@@ -251,8 +280,11 @@ def main():
         print("Success!")
         
         #__verify_connect_to_db(get_connection())
-        #get_unvisited_items(get_connection(),count_of_images)
+        #get_unvisited_items(get_connection(),count_of_images)        
     except Exception as e: print(e)
 
 if __name__ == "__main__":
-    main()
+    if (len(sys.argv) != 3):
+        print("Usage: {0} (Number of Images) (User Name)".format(sys.argv[0]))
+    else:
+        main(int(sys.argv[1]), str(sys.argv[2])) 

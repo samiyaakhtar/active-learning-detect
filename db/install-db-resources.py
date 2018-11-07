@@ -1,6 +1,7 @@
 import pg8000
 import os
 import sys
+import collections
 from os import listdir
 from os.path import isfile, join
 
@@ -24,6 +25,16 @@ def execute_queries_from_map(conn, file_query_map):
             print("\t{0}".format(file_path))         
     return
 
+def database_exists(conn, db_name):
+    if db_name:
+        cursor = conn.cursor()
+        query = "SELECT 1 FROM pg_database WHERE datname='{0}'"
+        cursor.execute(query.format(db_name))
+        row = cursor.fetchone()
+        if row:
+            return int(row[0]) == 1
+    return False
+
 def create_database(conn, db_name):
     if db_name:
         cursor = conn.cursor()
@@ -34,6 +45,18 @@ def create_database(conn, db_name):
         print("Successfully created database named '{0}'".format(db_name))
     else:
         print("No database created due to empty parameter")
+    return
+
+def install_extensions(conn, list_of_extensions):
+    if (len(list_of_extensions) > 0):
+        cursor = conn.cursor()
+        conn.autocommit = True
+        for ext in list_of_extensions:     
+            query = "CREATE EXTENSION {0};"
+            cursor.execute(query.format(ext))
+            print("Installed extension named '{0}'".format(ext))
+    else:
+        print("No extensions to install")
     return
 
 def get_connection():
@@ -59,30 +82,48 @@ def execute_files_in_dir_list(conn,list_of_sub_dirs):
     for sub_dir in list_of_sub_dirs:
         print("\n****\tReading files in '{0}' directory\t****\n".format(sub_dir))
         file_query_map = get_file_query_map(sub_dir)
+        file_query_map = collections.OrderedDict(sorted(file_query_map.items()))
         if '' in file_query_map.values():
             print("One of the files is empty. Please fix")
             return
         execute_queries_from_map(conn,file_query_map)
 
-def main(db_name):
+def main(db_name, overwrite_db):
     try:
         if(os.getenv("DB_HOST") is None or os.getenv("DB_USER") is None or os.getenv("DB_PASS") is None):
             print("Please set environment variables for DB_HOST, DB_USER, DB_PASS")
             return
 
+        #TODO: Allow overwriting of existing DB
+        if (database_exists(get_default_connection(), db_name) and not overwrite_db):
+            print("Database {0} already exists.".format(db_name))
+            return
+
         #Set up the database
         create_database(get_default_connection(),db_name)
 
+        #Install extensions
+        install_extensions(get_connection_for_db(db_name),['citext'])
+
         #Connect to the new database and install resources
         conn = get_connection_for_db(db_name) 
-        sub_dirs = ["tables","functions","triggers"]
+        sub_dirs = ["tables","functions","triggers","data"]
         execute_files_in_dir_list(conn,sub_dirs)
 
         print("Done!")
-    except Exception as e: print(e)
+    except Exception as e: 
+        print(e)
+        #traceback.print_exc()
 
 if __name__ == "__main__":
-    if (len(sys.argv) != 2):
-        print("Expected 1 argument of type string for db_name")
-    else:
-        main(str(sys.argv[1]))  
+    if len(sys.argv) < 2:
+        print("Usage: python3 {0} (DB Name) [-force]".format(sys.argv[0]))
+    elif len(sys.argv) == 2:
+        main(str(sys.argv[1]),False)
+    '''
+    elif str(sys.argv[2]).lower() == "-force":
+        main(str(sys.argv[1]),True)
+    else: 
+        main(str(sys.argv[1]),False)
+    '''
+            
