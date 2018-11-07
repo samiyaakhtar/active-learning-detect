@@ -3,6 +3,7 @@ import argparse
 from operations import (
     download,
     upload,
+    onboard,
     LOWER_LIMIT,
     UPPER_LIMIT,
     read_config,
@@ -18,9 +19,10 @@ if __name__ == "__main__":
 
     parser.add_argument(
         'operation',
-        choices=['download', 'upload']
+        choices=['download', 'upload', 'onboard']
     )
 
+    parser.add_argument('-f', '--folder')  
     parser.add_argument('-n', '--num-images', type=int)
     args = parser.parse_args()
 
@@ -30,5 +32,7 @@ if __name__ == "__main__":
 
     if operation == 'download':
         download(config, args.num_images)
+    elif operation == 'onboard':
+        onboard(config, args.folder)
     else:
         upload(config)

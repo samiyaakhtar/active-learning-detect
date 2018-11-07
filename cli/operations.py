@@ -7,7 +7,7 @@ import shutil
 import pathlib
 import json
 import copy
-from azure.storage.blob import BlockBlobService
+from azure.storage.blob import BlockBlobService, ContentSettings
 
 FUNCTIONS_SECTION = 'FUNCTIONS'
 FUNCTIONS_KEY = 'FUNCTIONS_KEY'
@@ -52,6 +52,25 @@ def get_azure_storage_client(config):
     )
 
     return azure_storage_client
+
+
+def onboard(config, folder_name):
+    blob_storage = get_azure_storage_client(config)
+    uri = 'https://' + config.get("storage_account") + '.blob.core.windows.net/' + config.get("storage_container") + '/'
+
+    images = []
+    for image in os.listdir(folder_name):
+        if image.lower().endswith('.png') or image.lower().endswith('jpg') or image.lower().endswith('jpeg'):
+            local_path=os.path.join(folder_name, image)
+            blob_name = str(uuid.uuid4())
+
+            # Upload the created file, use blob_name for the blob name to prevent clashing
+            blob_storage.create_blob_from_path(config.get("storage_container"), blob_name, local_path, content_settings=ContentSettings(content_type='image/png'))
+            images.append(uri + blob_name)
+    
+    print("\nThe images we just onboarded are:")
+    for blob in images:
+        print("\n\t" + blob)
 
 
 def _download_bounds(num_images):
