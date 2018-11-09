@@ -2,7 +2,6 @@ import configparser
 import requests
 import time
 import os
-import uuid
 import shutil
 import pathlib
 import json
@@ -60,17 +59,14 @@ def onboard(config, folder_name):
     uri = 'https://' + config.get("storage_account") + '.blob.core.windows.net/' + config.get("storage_container") + '/'
     functions_url = config.get('url') + '/api/onboarding'
     images = []
-    count = 0
     for image in os.listdir(folder_name):
         if image.lower().endswith('.png') or image.lower().endswith('.jpg') or image.lower().endswith('.jpeg') or image.lower().endswith('.gif'):
             local_path=os.path.join(folder_name, image)
-            blob_name = str(uuid.uuid4())
-            count = count + 1
-            print('Uploading image #' + str(count))
+            print('Uploading image ' + image)
 
-            # Upload the created file, use blob_name for the blob name to prevent clashing
-            blob_storage.create_blob_from_path(config.get("storage_container"), blob_name, local_path, content_settings=ContentSettings(content_type='image/png'))
-            images.append(uri + blob_name)
+            # Upload the created file, use image name for the blob name
+            blob_storage.create_blob_from_path(config.get("storage_container"), image, local_path, content_settings=ContentSettings(content_type='image/png'))
+            images.append(uri + image)
     
     # Post this data to the server to add them to database and kick off active learning
     data = {}
