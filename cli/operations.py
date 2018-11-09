@@ -61,7 +61,7 @@ def onboard(config, folder_name):
     images = []
     count = 0
     for image in os.listdir(folder_name):
-        if image.lower().endswith('.png') or image.lower().endswith('jpg') or image.lower().endswith('jpeg'):
+        if image.lower().endswith('.png') or image.lower().endswith('.jpg') or image.lower().endswith('.jpeg') or image.lower().endswith('.gif'):
             local_path=os.path.join(folder_name, image)
             blob_name = str(uuid.uuid4())
             count = count + 1
