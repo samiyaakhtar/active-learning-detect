@@ -10,8 +10,9 @@ jobs:
     vmImage: 'Ubuntu 16.04'
   strategy:
     matrix:
-      Python35:
-        python.version: '3.5'
+      #Azure Functions Python preview doesn't support 3.5
+      #Python35:
+      #  python.version: '3.5'
       Python36:
         python.version: '3.6'
       Python37:
@@ -29,7 +30,7 @@ jobs:
 
   - script: |
       pip install pytest
-      pytest cli --doctest-modules --junitxml=junit/test-results.xml
+      pytest cli functions --doctest-modules --junitxml=junit/test-results.xml
     displayName: 'pytest'
 
   - task: PublishTestResults@2

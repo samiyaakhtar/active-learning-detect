@@ -2,6 +2,7 @@ import pg8000
 import os
 import sys
 import collections
+import argparse
 from os import listdir
 from os.path import isfile, join
 
@@ -26,14 +27,34 @@ def execute_queries_from_map(conn, file_query_map):
     return
 
 def database_exists(conn, db_name):
+<<<<<<< HEAD
+<<<<<<< HEAD
     if db_name:
         cursor = conn.cursor()
-        query = "SELECT 1 FROM pg_database WHERE datname='{0}'"
-        cursor.execute(query.format(db_name))
+        query = "SELECT 1 FROM pg_database WHERE datname=%s"
+        cursor.execute(query,(db_name,))
         row = cursor.fetchone()
         if row:
             return int(row[0]) == 1
     return False
+=======
+    result = -1
+=======
+>>>>>>> Fixed issue in db resoruces install file. Updated table schema
+    if db_name:
+        cursor = conn.cursor()
+        query = "SELECT 1 FROM pg_database WHERE datname=%s"
+        cursor.execute(query,(db_name,))
+        row = cursor.fetchone()
+<<<<<<< HEAD
+        result = int(row[0])
+    return result == 1
+>>>>>>> Adding support to check if db already exists.
+=======
+        if row:
+            return int(row[0]) == 1
+    return False
+>>>>>>> Fixed issue in db resoruces install file. Updated table schema
 
 def create_database(conn, db_name):
     if db_name:
@@ -47,6 +68,27 @@ def create_database(conn, db_name):
         print("No database created due to empty parameter")
     return
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> Updated deployment to be more idempotent. Updated table schemas
+def remove_database(conn, db_name):
+    if db_name:
+        cursor = conn.cursor()
+        conn.autocommit = True
+        query = "DROP DATABASE {0};"
+        print("\nAttempting to drop database '{0}'...This may take up to 30 seconds".format(db_name))
+        cursor.execute(query.format(db_name))
+        print("Successfully dropped database named '{0}'".format(db_name))
+    else:
+        print("No database dropped due to empty parameter")
+    return
+
+<<<<<<< HEAD
+=======
+>>>>>>> Added support for user creating and auditing in DB, DAL, and deployment.
+=======
+>>>>>>> Updated deployment to be more idempotent. Updated table schemas
 def install_extensions(conn, list_of_extensions):
     if (len(list_of_extensions) > 0):
         cursor = conn.cursor()
@@ -93,10 +135,20 @@ def main(db_name, overwrite_db):
         if(os.getenv("DB_HOST") is None or os.getenv("DB_USER") is None or os.getenv("DB_PASS") is None):
             print("Please set environment variables for DB_HOST, DB_USER, DB_PASS")
             return
+        
+<<<<<<< HEAD
+        if (database_exists(get_default_connection(), db_name) and overwrite_db):
+            remove_database(get_default_connection(),db_name)
+        elif (database_exists(get_default_connection(), db_name) and not overwrite_db):    
+            print("Database {0} already exists. Please see --help for overwrite option.".format(db_name))
+            return
 
-        #TODO: Allow overwriting of existing DB
-        if (database_exists(get_default_connection(), db_name) and not overwrite_db):
-            print("Database {0} already exists.".format(db_name))
+=======
+>>>>>>> Fixed issue
+        if (database_exists(get_default_connection(), db_name) and overwrite_db):
+            remove_database(get_default_connection(),db_name)
+        elif (database_exists(get_default_connection(), db_name) and not overwrite_db):    
+            print("Database {0} already exists. Please see --help for overwrite option.".format(db_name))
             return
 
         #Set up the database
@@ -116,6 +168,23 @@ def main(db_name, overwrite_db):
         #traceback.print_exc()
 
 if __name__ == "__main__":
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> Updated deployment to be more idempotent. Updated table schemas
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('database_name', type=str,
+                    help='The name of the database to create and install resources on')
+
+    parser.add_argument('-o','--overwrite', action='store_true',
+                    help='Will drop and restore a database if it already exists')
+
+    args = parser.parse_args()
+    database_name = args.database_name
+<<<<<<< HEAD
+    main(args.database_name,args.overwrite)           
+=======
     if len(sys.argv) < 2:
         print("Usage: python3 {0} (DB Name) [-force]".format(sys.argv[0]))
     elif len(sys.argv) == 2:
@@ -127,3 +196,9 @@ if __name__ == "__main__":
         main(str(sys.argv[1]),False)
     '''
             
+>>>>>>> Adding support to check if db already exists.
+=======
+    main(args.database_name,args.overwrite)
+
+            
+>>>>>>> Updated deployment to be more idempotent. Updated table schemas

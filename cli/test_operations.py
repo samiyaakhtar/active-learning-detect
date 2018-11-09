@@ -21,6 +21,7 @@ from operations import (
     STORAGE_CONTAINER,
     TAGGING_SECTION,
     TAGGING_LOCATION_KEY,
+    TAGGING_USER_KEY,
     functions_config_section,
     storage_config_section,
     tagging_config_section,
@@ -107,7 +108,8 @@ class TestConfig(unittest.TestCase):
                     FUNCTIONS_URL: "test"
                 },
                 TAGGING_SECTION: {
-                    TAGGING_LOCATION_KEY: "test"
+                    TAGGING_LOCATION_KEY: "test",
+                    TAGGING_USER_KEY: "test"
                 }
             }
         )

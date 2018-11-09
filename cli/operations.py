@@ -19,6 +19,7 @@ STORAGE_CONTAINER = 'STORAGE_CONTAINER'
 
 TAGGING_SECTION = 'TAGGING'
 TAGGING_LOCATION_KEY = 'TAGGING_LOCATION'
+TAGGING_USER_KEY = 'TAGGING_USER'
 
 
 DEFAULT_NUM_IMAGES = 40
@@ -270,11 +271,12 @@ def storage_config_section(storage_config_section):
 
 def tagging_config_section(tagging_config_section):
     tagging_location_value = tagging_config_section.get(TAGGING_LOCATION_KEY)
+    tagging_user_value = tagging_config_section.get(TAGGING_USER_KEY)
 
-    if not tagging_location_value:
+    if not tagging_location_value or not tagging_user_value:
         raise MissingConfigException()
 
-    return tagging_location_value
+    return tagging_location_value, tagging_user_value
 
 
 def read_config_with_parsed_config(parser):
@@ -297,7 +299,7 @@ def read_config_with_parsed_config(parser):
         parser[STORAGE_SECTION]
     )
 
-    tagging_location = tagging_config_section(parser[TAGGING_SECTION])
+    tagging_location, tagging_user = tagging_config_section(parser[TAGGING_SECTION])
 
     return {
         "key": functions_key,
@@ -305,5 +307,6 @@ def read_config_with_parsed_config(parser):
         "storage_account": storage_account,
         "storage_key": storage_key,
         "storage_container": storage_container,
-        "tagging_location": tagging_location
+        "tagging_location": tagging_location,
+        "tagging_user": tagging_user
     }

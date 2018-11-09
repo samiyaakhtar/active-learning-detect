@@ -42,7 +42,7 @@ def get_images_for_tagging(conn, num_images):
         images_to_update = '{0}'.format(', '.join(selected_images_to_tag.keys()))
         cursor.execute("UPDATE Image_Tagging_State SET TagStateId = {0} WHERE ImageId IN ({1})".format(ImageTagState.TAG_IN_PROGRESS, images_to_update))
         conn.commit()
-        print(f"Updated {len(selected_images_to_tag)} images to the state {ImageTagState.TAG_IN_PROGRESS}")
+        print("Updated {len(selected_images_to_tag)} images to the state {0}".format(ImageTagState.TAG_IN_PROGRESS))
     else:
         print("No images untagged images left!")
     # Return the list of URLs to the user (values in the selected_images_to_tag dictionary)
@@ -53,11 +53,11 @@ def __new_postgres_connection(host_name, db_name, db_user, db_pass):
 
 def update_tagged_images(conn, list_of_image_ids):
     __update_images(conn, list_of_image_ids, ImageTagState.COMPLETED_TAG)
-    print(f"Updated {len(list_of_image_ids)} image(s) to the state {ImageTagState.COMPLETED_TAG.name}")
+    print("Updated {0} image(s) to the state {1}".format(len(list_of_image_ids),ImageTagState.COMPLETED_TAG.name))
 
 def update_untagged_images(conn, list_of_image_ids):
     __update_images(conn, list_of_image_ids, ImageTagState.INCOMPLETE_TAG)
-    print(f"Updated {len(list_of_image_ids)} image(s) to the state {ImageTagState.INCOMPLETE_TAG.name}")
+    print("Updated {0} image(s) to the state {1}".format(len(list_of_image_ids),ImageTagState.INCOMPLETE_TAG.name))
 
 def __update_images(conn, list_of_image_ids, new_image_tag_state):
     if not isinstance(new_image_tag_state, ImageTagState):
