@@ -57,20 +57,30 @@ def get_azure_storage_client(config):
 def onboard(config, folder_name):
     blob_storage = get_azure_storage_client(config)
     uri = 'https://' + config.get("storage_account") + '.blob.core.windows.net/' + config.get("storage_container") + '/'
-
+    functions_url = config.get('url') + '/api/onboarding'
     images = []
+    count = 0
     for image in os.listdir(folder_name):
         if image.lower().endswith('.png') or image.lower().endswith('jpg') or image.lower().endswith('jpeg'):
             local_path=os.path.join(folder_name, image)
             blob_name = str(uuid.uuid4())
+            count = count + 1
+            print('Uploading image #' + str(count))
 
             # Upload the created file, use blob_name for the blob name to prevent clashing
             blob_storage.create_blob_from_path(config.get("storage_container"), blob_name, local_path, content_settings=ContentSettings(content_type='image/png'))
             images.append(uri + blob_name)
     
-    print("\nThe images we just onboarded are:")
-    for blob in images:
-        print("\n\t" + blob)
+    # Post this data to the server to add them to database and kick off active learning
+    data = {}
+    data['imageUrls'] = images
+    headers = {'content-type': 'application/json'}
+    query = {
+        "code": config.get('key')
+    }
+
+    response = requests.post(functions_url, data=json.dumps(data), headers=headers, params=query)
+    print("Images successfully uploaded. \n" + response.text)
 
 
 def _download_bounds(num_images):
@@ -194,7 +204,7 @@ def upload(config):
         os.path.expanduser(config.get("tagging_location"))
     )
 
-    print("Uploading VOTT json file…")
+    print("Uploading VOTT json file...")
     vott_json = pathlib.Path(tagging_location / "data.json")
 
     with open(str(vott_json)) as json_file:
