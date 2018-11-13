@@ -1,12 +1,12 @@
-import sys
+# import sys
 import string
-import os
-import time
+# import os
+# import time
 import random
 from enum import IntEnum, unique
 import getpass
 import itertools
-from db_provider import DatabaseInfo, PostGresProvider
+from .db_provider import DatabaseInfo, PostGresProvider
 
 @unique
 class ImageTagState(IntEnum):
@@ -42,10 +42,10 @@ class ImageTagDataAccess(object):
         conn = self._db_provider.get_connection()
         cursor = conn.cursor()
         cursor.execute('select * from tagstate')
-        row = cursor.fetchone()  
+        row = cursor.fetchone()
         print()
-        while row:  
-            print(str(row[0]) + " " + str(row[1]))    
+        while row:
+            print(str(row[0]) + " " + str(row[1]))
             row = cursor.fetchone()
 
     def create_user(self,user_name):
@@ -61,7 +61,7 @@ class ImageTagDataAccess(object):
                 user_id = cursor.fetchone()[0]
                 conn.commit()
             finally: cursor.close()
-        except Exception as e: 
+        except Exception as e:
             print("An error occured creating a user: {0}".format(e))
             raise
         finally: conn.close()
@@ -75,7 +75,8 @@ class ImageTagDataAccess(object):
         try:
             conn = self._db_provider.get_connection()
             try:
-                cursor = conn.cursor()       
+                cursor = conn.cursor()
+                # TODO: Should we add TagStateId = INCOMPLETE_TAG also for fetching images?
                 query = ("SELECT b.ImageId, b.ImageLocation, a.TagStateId FROM Image_Tagging_State a "
                         "JOIN Image_Info b ON a.ImageId = b.ImageId WHERE a.TagStateId = 1 order by "
                         "a.createddtim DESC limit {0}")
@@ -85,9 +86,9 @@ class ImageTagDataAccess(object):
                     selected_images_to_tag[str(row[0])] = str(row[1])
                 self._update_images(selected_images_to_tag,ImageTagState.TAG_IN_PROGRESS, user_id, conn)
             finally: cursor.close()
-        except Exception as e: 
+        except Exception as e:
             print("An errors occured getting images: {0}".format(e))
-            raise 
+            raise
         finally: conn.close()
         return selected_images_to_tag.values()
 
@@ -111,16 +112,21 @@ class ImageTagDataAccess(object):
                     conn.commit()
                 finally: cursor.close()
                 print("Inserted {0} images to the DB".format(len(url_to_image_id_map)))
-            except Exception as e: 
+            except Exception as e:
                 print("An errors occured getting image ids: {0}".format(e))
-                raise 
+                raise
             finally: conn.close()
         return url_to_image_id_map
 
-    def update_untagged_images(self,list_of_image_ids, user_id):
+    def update_incomplete_images(self, list_of_image_ids, user_id):
         #TODO: Make sure the image ids are in a TAG_IN_PROGRESS state
         self._update_images(list_of_image_ids,ImageTagState.INCOMPLETE_TAG,user_id, self._db_provider.get_connection())
         print("Updated {0} image(s) to the state {1}".format(len(list_of_image_ids),ImageTagState.INCOMPLETE_TAG.name))
+
+    def update_completed_untagged_images(self,list_of_image_ids, user_id):
+        #TODO: Make sure the image ids are in a TAG_IN_PROGRESS state
+        self._update_images(list_of_image_ids,ImageTagState.COMPLETED_TAG,user_id, self._db_provider.get_connection())
+        print("Updated {0} image(s) to the state {1}".format(len(list_of_image_ids),ImageTagState.COMPLETED_TAG.name))
 
     def _update_images(self, list_of_image_ids, new_image_tag_state, user_id, conn):
         if not isinstance(new_image_tag_state, ImageTagState):
@@ -138,13 +144,14 @@ class ImageTagDataAccess(object):
                 try:
                     image_ids_as_strings = [str(i) for i in list_of_image_ids]
                     images_to_update = '{0}'.format(', '.join(image_ids_as_strings))
-                    query = "UPDATE Image_Tagging_State SET TagStateId = %s, ModifiedByUser = %s, ModifiedDtim = now() WHERE ImageId IN (%s)"
-                    cursor.execute(query,(new_image_tag_state,user_id,images_to_update))
+                    # TODO: find another way to do string subsitution that doesn't break this query
+                    query = "UPDATE Image_Tagging_State SET TagStateId = {0}, ModifiedByUser = {2}, ModifiedDtim = now() WHERE ImageId IN ({1})"
+                    cursor.execute(query.format(new_image_tag_state,images_to_update,user_id))
                     conn.commit()
                 finally: cursor.close()
             else:
                 print("No images to update")
-        except Exception as e: 
+        except Exception as e:
             print("An errors occured updating images: {0}".format(e))
             raise
 
@@ -166,15 +173,15 @@ class ImageTagDataAccess(object):
                         self._update_images([image_id],ImageTagState.READY_TO_TAG, user_id,conn)
                         print("ImageId: {0} to has a new state: {1}".format(image_id,ImageTagState.READY_TO_TAG.name))
                 finally: cursor.close()
-            except Exception as e: 
+            except Exception as e:
                 print("An errors occured updating image urls: {0}".format(e))
-                raise 
+                raise
             finally: conn.close()
 
     #TODO: Do safer query string formatting
     def update_tagged_images(self,list_of_image_tags, user_id):
         if(not list_of_image_tags):
-            return  
+            return
 
         if type(user_id) is not int:
             raise TypeError('user id must be an integer')
@@ -183,7 +190,7 @@ class ImageTagDataAccess(object):
         try:
             conn = self._db_provider.get_connection()
             try:
-                cursor = conn.cursor() 
+                cursor = conn.cursor()
                 for img_id, list_of_tags in groups_by_image_id:
                     for img_tag in list(list_of_tags):
                         query = ("with iti AS ( "
@@ -197,32 +204,32 @@ class ImageTagDataAccess(object):
                                     "RETURNING (SELECT iti.ImageTagId FROM iti), ClassificationId) "
                                 "INSERT INTO tags_classification (ImageTagId,ClassificationId) "
                                 "SELECT imagetagid,classificationid from ci;")
-                        classifications = ", ".join("('{0}')".format(name) for name in img_tag.classification_names)                       
+                        classifications = ", ".join("('{0}')".format(name) for name in img_tag.classification_names)
                         cursor.execute(query.format(img_tag.image_id,img_tag.x_min,img_tag.x_max,img_tag.y_min,img_tag.y_max,user_id,classifications))
                     self._update_images([img_id],ImageTagState.COMPLETED_TAG,user_id,conn)
                     conn.commit()
                 print("Updated {0} image tags".format(len(list_of_image_tags)))
             finally: cursor.close()
-        except Exception as e: 
+        except Exception as e:
             print("An errors occured updating tagged image: {0}".format(e))
-            raise 
+            raise
         finally: conn.close()
 
 class ArgumentException(Exception):
     pass
 
 
-def main(): 
+def main():
     #################################################################
-    # This main method is an example of how to use some of 
+    # This main method is an example of how to use some of
     #  the ImageTagDataAccess methods. For instance:
     #   Creating a User
     #   Onboarding of new images
     #   Checking in images been tagged
-    #################################################################   
+    #################################################################
 
     #Replace me for testing
-    db_config = DatabaseInfo("abrig-db.postgres.database.azure.com","micro","abrigtest@abrig-db","abcdABCD123")
+    db_config = DatabaseInfo("","","","")
     data_access = ImageTagDataAccess(PostGresProvider(db_config))
     user_id = data_access.create_user(getpass.getuser())
     print("The user id for '{0}' is {1}".format(getpass.getuser(),user_id))
@@ -253,7 +260,7 @@ def generate_test_image_tags(list_of_image_ids,max_tags_per_image,max_classifica
             x_max = random.uniform(x_min,300)
             y_min = random.uniform(50,300)
             y_max = random.uniform(y_min,300)
-            classifications_per_tag = random.randint(1,max_classifications_per_tag)        
+            classifications_per_tag = random.randint(1,max_classifications_per_tag)
             image_tag = ImageTag(image_id,x_min,x_max,y_min,y_max,random.sample(TestClassifications,classifications_per_tag))
             list_of_image_tags.append(image_tag)
     return list_of_image_tags
@@ -263,4 +270,3 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 
 if __name__ == "__main__":
     main()
-

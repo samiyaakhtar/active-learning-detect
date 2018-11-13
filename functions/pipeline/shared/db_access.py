@@ -20,8 +20,33 @@ default_db_name = ""
 default_db_user = ""
 default_db_pass = ""
 
+# An entity class for a VOTT image
+class ImageInfo(object):
+    def __init__(self, image_name, image_location, height, width):
+        self.image_name = image_name
+        self.image_location = image_location
+        self.height = height
+        self.width = width
+
 def get_connection():
     return __new_postgres_connection(os.getenv('DB_HOST', default_db_host), os.getenv('DB_NAME', default_db_name), os.getenv('DB_USER', default_db_user), os.getenv('DB_PASS', default_db_pass))
+
+def __new_postgres_connection(host_name, db_name, db_user, db_pass):
+    return pg8000.connect(db_user, host=host_name, unix_sock=None, port=5432, database=db_name, password=db_pass, ssl=True, timeout=None, application_name=None)
+
+def get_image_ids_for_new_images(conn, list_of_image_infos):
+    url_to_image_id_map = {}
+    if(len(list_of_image_infos) > 0):
+        cursor = conn.cursor()
+        for img in list(list_of_image_infos):
+            query = "INSERT INTO Image_Info (OriginalImageName,ImageLocation,Height,Width) VALUES ('{0}','{1}',{2},{3}) RETURNING ImageId;"
+            cursor.execute(query.format(img.image_name,img.image_location,str(img.height),str(img.width)))
+            new_img_id = cursor.fetchone()[0]
+            url_to_image_id_map[img.image_location] = new_img_id
+            #__update_images(conn,[new_img_id],ImageTagState.NOT_READY)
+        conn.commit()
+    print(f"Inserted {len(url_to_image_id_map)} images to the DB")
+    return url_to_image_id_map
 
 def get_images_for_tagging(conn, num_images):
     cursor = conn.cursor()
@@ -47,9 +72,6 @@ def get_images_for_tagging(conn, num_images):
         print("No images untagged images left!")
     # Return the list of URLs to the user (values in the selected_images_to_tag dictionary)
     return list(selected_images_to_tag.values())
-
-def __new_postgres_connection(host_name, db_name, db_user, db_pass):
-    return pg8000.connect(db_user, host=host_name, unix_sock=None, port=5432, database=db_name, password=db_pass, ssl=True, timeout=None, application_name=None)
 
 def update_tagged_images(conn, list_of_image_ids):
     __update_images(conn, list_of_image_ids, ImageTagState.COMPLETED_TAG)

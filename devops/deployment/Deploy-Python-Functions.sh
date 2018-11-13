@@ -71,4 +71,4 @@ AppInsightsKey=$(az resource show -g $ResourceGroup -n $AppInsightsName --resour
 echo
 echo "Setting application setting APPINSIGHTS_INSTRUMENTATIONKEY on $FunctionAppName"
 echo
-az functionapp config appsettings set --name $FunctionAppName --resource-group $ResourceGroup --settings "APPINSIGHTS_INSTRUMENTATIONKEY = $AppInsightsKey"
+az functionapp config appsettings set --name $FunctionAppName --resource-group $ResourceGroup --settings "APPINSIGHTS_INSTRUMENTATIONKEY=$AppInsightsKey"
