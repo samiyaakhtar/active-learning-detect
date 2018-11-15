@@ -1,3 +1,4 @@
+import argparse
 import os
 import requests
 from azure.storage.blob import BlockBlobService, ContentSettings
@@ -8,20 +9,20 @@ from operations import (
 )
 
 class TagData(object):
-    def __init__(self, imageUrl, name, tags, x_min, x_max, y_min, y_max, height, width):
+    def __init__(self, imageUrl, name, tags, x1, x2, y1, y2, height, width):
         self.tags = tags
-        self.x1 = x_min 
-        self.x2 = x_max
-        self.y1 = y_min
-        self.y2 = y_max
+        self.x1 = x1 
+        self.x2 = x2
+        self.y1 = y1
+        self.y2 = y2
         self.height = height
         self.width = width
         self.name = name
         self.imageUrl = imageUrl
 
-def train(config):
+def train(config, num_images):
     # First, download vott json for tagging complete images
-    vott_json = download_vott_json(config)
+    vott_json = download_vott_json(config, num_images)
 
     # Grab these images from the blob storage
     download_images(vott_json)
@@ -36,10 +37,10 @@ def download_images(vott_json):
             blob_storage.get_blob_to_path(config.get("storage_container"),image, "images/{}".format(image))
 
 
-def download_vott_json(config):
+def download_vott_json(config, num_images):
     query = {
         "userName": config.get('tagging_user'),
-        "imageCount": 1
+        "imageCount": num_images
     }
     functions_url = config.get('url') + '/api/taggedimages'
     response = requests.get(functions_url, params=query)
@@ -62,5 +63,8 @@ def download_vott_json(config):
             
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-n', '--num-images', type=int)
     config = read_config(CONFIG_PATH)
-    train(config)
+    args = parser.parse_args()
+    train(config, args.num_images)
