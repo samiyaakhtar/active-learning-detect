@@ -118,3 +118,6 @@ tag/*.csv
 
 # TF exported graph files
 .pb
+
+# VSCode
+.vscode/*.json

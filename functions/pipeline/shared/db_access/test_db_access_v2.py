@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch 
 from unittest.mock import Mock
 
-from db_access_v2 import(
+from .db_access_v2 import(
     ImageTagDataAccess,
     ArgumentException,
     ImageTagState,

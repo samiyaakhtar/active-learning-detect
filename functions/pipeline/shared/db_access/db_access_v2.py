@@ -6,7 +6,8 @@ import random
 from enum import IntEnum, unique
 import getpass
 import itertools
-from .db_provider import DatabaseInfo, PostGresProvider
+
+from ..db_provider import DatabaseInfo, PostGresProvider
 
 @unique
 class ImageTagState(IntEnum):
@@ -76,11 +77,10 @@ class ImageTagDataAccess(object):
             conn = self._db_provider.get_connection()
             try:
                 cursor = conn.cursor()
-                # TODO: Should we add TagStateId = INCOMPLETE_TAG also for fetching images?
                 query = ("SELECT b.ImageId, b.ImageLocation, a.TagStateId FROM Image_Tagging_State a "
-                        "JOIN Image_Info b ON a.ImageId = b.ImageId WHERE a.TagStateId = 1 order by "
+                        "JOIN Image_Info b ON a.ImageId = b.ImageId WHERE a.TagStateId IN ({1}, {2}) order by "
                         "a.createddtim DESC limit {0}")
-                cursor.execute(query.format(number_of_images))
+                cursor.execute(query.format(number_of_images, ImageTagState.READY_TO_TAG, ImageTagState.INCOMPLETE_TAG))
                 for row in cursor:
                     print('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
                     selected_images_to_tag[str(row[0])] = str(row[1])
