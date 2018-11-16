@@ -2,6 +2,7 @@
 import string
 # import os
 # import time
+import logging
 import random
 from enum import IntEnum, unique
 import getpass
@@ -44,9 +45,9 @@ class ImageTagDataAccess(object):
         cursor = conn.cursor()
         cursor.execute('select * from tagstate')
         row = cursor.fetchone()
-        print()
+        logging.info('')
         while row:
-            print(str(row[0]) + " " + str(row[1]))
+            logging.info(str(row[0]) + " " + str(row[1]))
             row = cursor.fetchone()
 
     def create_user(self,user_name):
@@ -63,7 +64,7 @@ class ImageTagDataAccess(object):
                 conn.commit()
             finally: cursor.close()
         except Exception as e:
-            print("An error occured creating a user: {0}".format(e))
+            logging.error("An error occured creating a user: {0}".format(e))
             raise
         finally: conn.close()
         return user_id
@@ -82,12 +83,12 @@ class ImageTagDataAccess(object):
                         "a.createddtim DESC limit {0}")
                 cursor.execute(query.format(number_of_images, ImageTagState.READY_TO_TAG, ImageTagState.INCOMPLETE_TAG))
                 for row in cursor:
-                    print('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
+                    logging.debug('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
                     selected_images_to_tag[str(row[0])] = str(row[1])
                 self._update_images(selected_images_to_tag,ImageTagState.TAG_IN_PROGRESS, user_id, conn)
             finally: cursor.close()
         except Exception as e:
-            print("An errors occured getting images: {0}".format(e))
+            logging.error("An errors occured getting images: {0}".format(e))
             raise
         finally: conn.close()
         return selected_images_to_tag.values()
@@ -111,9 +112,9 @@ class ImageTagDataAccess(object):
                         url_to_image_id_map[img.image_location] = new_img_id
                     conn.commit()
                 finally: cursor.close()
-                print("Inserted {0} images to the DB".format(len(url_to_image_id_map)))
+                logging.debug("Inserted {0} images to the DB".format(len(url_to_image_id_map)))
             except Exception as e:
-                print("An errors occured getting image ids: {0}".format(e))
+                logging.error("An errors occured getting image ids: {0}".format(e))
                 raise
             finally: conn.close()
         return url_to_image_id_map
@@ -121,12 +122,12 @@ class ImageTagDataAccess(object):
     def update_incomplete_images(self, list_of_image_ids, user_id):
         #TODO: Make sure the image ids are in a TAG_IN_PROGRESS state
         self._update_images(list_of_image_ids,ImageTagState.INCOMPLETE_TAG,user_id, self._db_provider.get_connection())
-        print("Updated {0} image(s) to the state {1}".format(len(list_of_image_ids),ImageTagState.INCOMPLETE_TAG.name))
+        logging.debug("Updated {0} image(s) to the state {1}".format(len(list_of_image_ids),ImageTagState.INCOMPLETE_TAG.name))
 
     def update_completed_untagged_images(self,list_of_image_ids, user_id):
         #TODO: Make sure the image ids are in a TAG_IN_PROGRESS state
         self._update_images(list_of_image_ids,ImageTagState.COMPLETED_TAG,user_id, self._db_provider.get_connection())
-        print("Updated {0} image(s) to the state {1}".format(len(list_of_image_ids),ImageTagState.COMPLETED_TAG.name))
+        logging.debug("Updated {0} image(s) to the state {1}".format(len(list_of_image_ids),ImageTagState.COMPLETED_TAG.name))
 
     def _update_images(self, list_of_image_ids, new_image_tag_state, user_id, conn):
         if not isinstance(new_image_tag_state, ImageTagState):
@@ -150,9 +151,9 @@ class ImageTagDataAccess(object):
                     conn.commit()
                 finally: cursor.close()
             else:
-                print("No images to update")
+                logging.debug("No images to update")
         except Exception as e:
-            print("An errors occured updating images: {0}".format(e))
+            logging.error("An errors occured updating images: {0}".format(e))
             raise
 
     def update_image_urls(self,image_id_to_url_map, user_id):
@@ -169,12 +170,12 @@ class ImageTagDataAccess(object):
                         query = "UPDATE Image_Info SET ImageLocation = '{0}', ModifiedDtim = now() WHERE ImageId = {1}"
                         cursor.execute(query.format(new_url,image_id))
                         conn.commit()
-                        print("Updated ImageId: {0} to new ImageLocation: {1}".format(image_id,new_url))
+                        logging.debug("Updated ImageId: {0} to new ImageLocation: {1}".format(image_id,new_url))
                         self._update_images([image_id],ImageTagState.READY_TO_TAG, user_id,conn)
-                        print("ImageId: {0} to has a new state: {1}".format(image_id,ImageTagState.READY_TO_TAG.name))
+                        logging.debug("ImageId: {0} to has a new state: {1}".format(image_id,ImageTagState.READY_TO_TAG.name))
                 finally: cursor.close()
             except Exception as e:
-                print("An errors occured updating image urls: {0}".format(e))
+                logging.error("An errors occured updating image urls: {0}".format(e))
                 raise
             finally: conn.close()
 
@@ -208,10 +209,10 @@ class ImageTagDataAccess(object):
                         cursor.execute(query.format(img_tag.image_id,img_tag.x_min,img_tag.x_max,img_tag.y_min,img_tag.y_max,user_id,classifications))
                     self._update_images([img_id],ImageTagState.COMPLETED_TAG,user_id,conn)
                     conn.commit()
-                print("Updated {0} image tags".format(len(list_of_image_tags)))
+                logging.debug("Updated {0} image tags".format(len(list_of_image_tags)))
             finally: cursor.close()
         except Exception as e:
-            print("An errors occured updating tagged image: {0}".format(e))
+            logging.error("An errors occured updating tagged image: {0}".format(e))
             raise
         finally: conn.close()
 
@@ -232,7 +233,7 @@ def main():
     db_config = DatabaseInfo("","","","")
     data_access = ImageTagDataAccess(PostGresProvider(db_config))
     user_id = data_access.create_user(getpass.getuser())
-    print("The user id for '{0}' is {1}".format(getpass.getuser(),user_id))
+    logging.info("The user id for '{0}' is {1}".format(getpass.getuser(),user_id))
 
     list_of_image_infos = generate_test_image_infos(5)
     url_to_image_id_map = data_access.add_new_images(list_of_image_infos,user_id)
@@ -269,4 +270,8 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
 if __name__ == "__main__":
+    #Log to console when run locally
+    console = logging.StreamHandler()
+    log = logging.getLogger()
+    log.addHandler(console)
     main()

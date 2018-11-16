@@ -1,5 +1,5 @@
 import json
-
+import logging
 from ..shared.vott_parser import process_vott_json
 from ..shared.db_provider import get_postgres_provider
 from ..shared.db_access import ImageTag, ImageTagDataAccess
@@ -40,13 +40,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             if ids_to_tags[image_id]:
                 all_imagetags.extend(__create_ImageTag_list(image_id, ids_to_tags[image_id]))
 
-        # Update all visited images with tags and set state to completed
+        logging.info("Update all visited images with tags and set state to completed")
         data_access.update_tagged_images(all_imagetags, user_id)
 
-        # Update visited but no tags identified images
+        logging.info("Update visited but no tags identified images")
         data_access.update_completed_untagged_images(upload_data["imagesVisitedNoTag"], user_id)
 
-        # Update unvisited/incomplete images
+        logging.info("Update unvisited/incomplete images")
         data_access.update_incomplete_images(upload_data["imagesNotVisited"], user_id)
 
         return func.HttpResponse(

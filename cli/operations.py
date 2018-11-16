@@ -20,10 +20,12 @@ azure_storage_client = None
 class ImageLimitException(Exception):
     pass
 
+#TODO We should create the container if it does not exist
 def onboard(config, folder_name):
     blob_storage = BlobStorage.get_azure_storage_client(config)
     uri = 'https://' + config.get("storage_account") + '.blob.core.windows.net/' + config.get("storage_container") + '/'
     functions_url = config.get('url') + '/api/onboarding'
+    user_name = config.get("tagging_user")
     images = []
     for image in os.listdir(folder_name):
         if image.lower().endswith('.png') or image.lower().endswith('.jpg') or image.lower().endswith('.jpeg') or image.lower().endswith('.gif'):
@@ -39,12 +41,17 @@ def onboard(config, folder_name):
     data['imageUrls'] = images
     headers = {'content-type': 'application/json'}
     query = {
-        "code": config.get('key')
+        "code": config.get('key'),
+        "userName": user_name
     }
 
+    #TODO: Ensure we don't get 4xx or 5xx return codes
     response = requests.post(functions_url, data=json.dumps(data), headers=headers, params=query)
-    print("Images successfully uploaded. \n" + response.text)
-
+    json_resp = response.json()
+    count = len(json_resp['imageUrls'])
+    print("Successfully uploaded " + str(count) + " images.")
+    for url in json_resp['imageUrls']:
+        print(url)
 
 def _download_bounds(num_images):
     images_to_download = num_images
@@ -61,9 +68,11 @@ def _download_bounds(num_images):
 def download(config, num_images, strategy=None):
     # TODO: better/more proper URI handling.
     functions_url = config.get("url") + "/api/download"
+    user_name = config.get("tagging_user")
     images_to_download = _download_bounds(num_images)
     query = {
-        "imageCount": images_to_download
+        "imageCount": images_to_download,
+        "userName": user_name
     }
 
     response = requests.get(functions_url, params=query)
@@ -89,9 +98,12 @@ def download(config, num_images, strategy=None):
         exist_ok=True
     )
 
-    download_images(config, data_dir, json_resp)
-    print("Downloaded files. Ready to tag!")
-    return images_to_download
+    local_images = download_images(config, data_dir, json_resp)
+    count = len(local_images)
+    print("Successfully downloaded " + str(count) + " images.")
+    for image_path in local_images:
+        print(image_path)
+    print("Ready to tag!")
 
 
 def download_images(config, image_dir, json_resp):
@@ -101,25 +113,23 @@ def download_images(config, image_dir, json_resp):
     write_vott_data(image_dir, json_resp)
 
     urls = json_resp['imageUrls']
-    dummy = "https://cdn.pixabay.com/photo/2017/02/20/18/03/cat-2083492_960_720.jpg"
-
+    downloaded_file_paths = []
     for index in range(len(urls)):
         url = urls[index]
 
-        # file will look something like
-        # https://csehackstorage.blob.core.windows.net/image-to-tag/image4.jpeg
-        # need to massage it to get the last portion.
-
         file_name = url.split('/')[-1]
 
-        # todo: change this when we get actual data.
-        response = requests.get(dummy)
+        #TODO: We will download an empty file if we get a permission error on the blob store URL
+        # We should raise an exception. For now the blob store must be publically accessible 
+        response = requests.get(url)
         file_path = pathlib.Path(image_dir / file_name)
 
         with open(str(file_path), "wb") as file:
             for chunk in response.iter_content(chunk_size=128):
                 file.write(chunk)
             file.close()
+        downloaded_file_paths.append(file_path)
+    return downloaded_file_paths
 
 
 def write_vott_data(image_dir, json_resp):
@@ -163,6 +173,7 @@ def prepend_file_paths(image_dir, vott_json):
 
 def upload(config):
     functions_url = config.get("url") + "/api/upload"
+    user_name = config.get("tagging_user")
     tagging_location = pathlib.Path(
         os.path.expanduser(config.get("tagging_location"))
     )
@@ -176,7 +187,11 @@ def upload(config):
     # Munge the vott json file.
     munged_json = trim_file_paths(json_data)
 
-    response = requests.post(functions_url, json=munged_json)
+    query = {
+        "userName": user_name
+    }
+
+    response = requests.post(functions_url, json=munged_json, params=query)
     response.raise_for_status()
 
     resp_json = response.json()
@@ -195,6 +210,8 @@ def trim_file_paths(json_data):
 
     munged_visited_frames = []
     for frame_path in visited_frames:
+        #TODO: This line assumes that the visited frames name is a full path. 
+        # Centralize this business logic in the codebase. It probably exists in shared code too
         munged_visited_frames.append(
             pathlib.Path(frame_path).name
         )

@@ -37,7 +37,9 @@ if __name__ == "__main__":
 
     if operation == 'download':
         download(config, args.num_images)
-    elif operation == 'onboard':
+    elif operation == 'onboard' and not args.folder:
+        print ("--folder arg required for onboard operation")   
+    elif operation == 'onboard' and args.folder:
         onboard(config, args.folder)
     else:
         upload(config)
