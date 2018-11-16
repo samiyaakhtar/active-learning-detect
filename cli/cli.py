@@ -1,4 +1,10 @@
 import argparse
+import sys
+from pathlib import Path
+
+sys.path.append("../utils")
+from config import Config
+from blob_utils import BlobStorage
 
 from operations import (
     download,
@@ -6,12 +12,11 @@ from operations import (
     onboard,
     LOWER_LIMIT,
     UPPER_LIMIT,
-    read_config,
     CONFIG_PATH
 )
 
 if __name__ == "__main__":
-
+    
     # how i want to use the tool:
     # cli.py download --num-images 40
     # cli.py upload
@@ -28,7 +33,7 @@ if __name__ == "__main__":
 
     operation = args.operation
 
-    config = read_config(CONFIG_PATH)
+    config = Config.read_config(CONFIG_PATH)
 
     if operation == 'download':
         download(config, args.num_images)
@@ -36,3 +41,4 @@ if __name__ == "__main__":
         onboard(config, args.folder)
     else:
         upload(config)
+

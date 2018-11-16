@@ -1,12 +1,15 @@
 import argparse
 import os
 import requests
+import sys
+from pathlib import Path
 from azure.storage.blob import BlockBlobService, ContentSettings
-from operations import (
-    read_config,
-    CONFIG_PATH,
-    get_azure_storage_client
-)
+
+sys.path.append("../utils")
+from blob_utils import BlobStorage
+from config import Config
+
+CONFIG_PATH = os.environ.get('ALCONFIG', None)
 
 class TagData(object):
     def __init__(self, imageUrl, name, tags, x1, x2, y1, y2, height, width):
@@ -29,7 +32,7 @@ def train(config, num_images):
 
 
 def download_images(vott_json):
-    blob_storage = get_azure_storage_client(config)
+    blob_storage = BlobStorage.get_azure_storage_client(config)
     if not os.path.exists('images'):
         os.makedirs('images')
     for image in vott_json:
@@ -65,6 +68,6 @@ def download_vott_json(config, num_images):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--num-images', type=int)
-    config = read_config(CONFIG_PATH)
+    config = Config.read_config(CONFIG_PATH)
     args = parser.parse_args()
     train(config, args.num_images)
