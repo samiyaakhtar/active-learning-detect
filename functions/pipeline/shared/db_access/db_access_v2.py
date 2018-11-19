@@ -1,14 +1,11 @@
-# import sys
 import string
-# import os
-# import time
 import logging
 import random
 from enum import IntEnum, unique
 import getpass
 import itertools
-
 from ..db_provider import DatabaseInfo, PostGresProvider
+
 
 @unique
 class ImageTagState(IntEnum):
@@ -19,6 +16,7 @@ class ImageTagState(IntEnum):
     INCOMPLETE_TAG = 4
     ABANDONED = 5
 
+
 # An entity class for a VOTT image
 class ImageInfo(object):
     def __init__(self, image_name, image_location, height, width):
@@ -27,14 +25,25 @@ class ImageInfo(object):
         self.height = height
         self.width = width
 
+
+# Entity class for Tags stored in DB
 class ImageTag(object):
     def __init__(self, image_id, x_min, x_max, y_min, y_max, classification_names):
-            self.image_id = image_id
-            self.x_min = x_min
-            self.x_max = x_max
-            self.y_min = y_min
-            self.y_max = y_max
-            self.classification_names = classification_names
+        self.image_id = image_id
+        self.x_min = x_min
+        self.x_max = x_max
+        self.y_min = y_min
+        self.y_max = y_max
+        self.classification_names = classification_names
+
+
+# Vott tags have image height & width data as well.
+class VottImageTag(ImageTag):
+    def __init__(self, image_id, x_min, x_max, y_min, y_max, classification_names, image_height, image_width):
+        super().__init__(image_id, x_min, x_max, y_min, y_max, classification_names)
+        self.image_height = image_height
+        self.image_width = image_width
+
 
 class ImageTagDataAccess(object):
     def __init__(self,  db_provider):
@@ -69,7 +78,7 @@ class ImageTagDataAccess(object):
         finally: conn.close()
         return user_id
 
-    def get_new_images(self, number_of_images, user_id):
+    def get_images_for_tagging(self, number_of_images, user_id):
         if number_of_images <= 0:
             raise ArgumentException("Parameter must be greater than zero")
 
@@ -84,14 +93,16 @@ class ImageTagDataAccess(object):
                 cursor.execute(query.format(number_of_images, ImageTagState.READY_TO_TAG, ImageTagState.INCOMPLETE_TAG))
                 for row in cursor:
                     logging.debug('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
-                    selected_images_to_tag[str(row[0])] = str(row[1])
+                    selected_images_to_tag[row[0]] = str(row[1])
                 self._update_images(selected_images_to_tag,ImageTagState.TAG_IN_PROGRESS, user_id, conn)
-            finally: cursor.close()
+            finally:
+                cursor.close()
         except Exception as e:
             logging.error("An errors occured getting images: {0}".format(e))
             raise
-        finally: conn.close()
-        return selected_images_to_tag.values()
+        finally:
+            conn.close()
+        return selected_images_to_tag
 
     def add_new_images(self,list_of_image_infos, user_id):
 
@@ -118,6 +129,106 @@ class ImageTagDataAccess(object):
                 raise
             finally: conn.close()
         return url_to_image_id_map
+
+    def get_tag_complete_images(self, number_of_images, user_id):
+        if number_of_images <= 0:
+            raise ArgumentException("Parameter must be greater than zero")
+
+        tag_complete_images = {}
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                query = ("SELECT b.ImageId, b.ImageLocation, a.TagStateId FROM Image_Tagging_State a "
+                        "JOIN Image_Info b ON a.ImageId = b.ImageId WHERE a.TagStateId = {1} order by "
+                        "a.createddtim DESC limit {0}")
+                cursor.execute(query.format(number_of_images, ImageTagState.COMPLETED_TAG))
+                for row in cursor:
+                    logging.debug('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
+                    tag_complete_images[row[0]] = str(row[1])
+            finally:
+                cursor.close()
+        except Exception as e:
+            logging.error("An errors occured getting images: {0}".format(e))
+            raise
+        finally:
+            conn.close()
+        return tag_complete_images
+
+    def get_image_tags(self, image_id):
+        if type(image_id) is not int:
+            raise TypeError('image_id must be an integer')
+
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                query = ("SELECT image_tags.imagetagid, image_info.imageid, x_min, x_max, y_min, y_max, "
+                         "classification_info.classificationname, image_info.height, image_info.width "
+                            "FROM image_tags "
+                                "inner join tags_classification on image_tags.imagetagid = tags_classification.imagetagid "
+                                "inner join classification_info on tags_classification.classificationid = classification_info.classificationid "
+                                "inner join image_info on image_info.imageid = image_tags.imageid "
+                            "WHERE image_tags.imageid = {0};")
+                cursor.execute(query.format(image_id,))
+
+                logging.debug("Got image tags back for image_id={}".format(image_id))
+                tag_id_to_VottImageTag = self.__build_id_to_VottImageTag(cursor)
+
+            finally:
+                cursor.close()
+        except Exception as e:
+            logging.error("An error occurred getting image tags for image id = {0}: {1}".format(image_id, e))
+            raise
+        finally:
+            conn.close()
+        return list(tag_id_to_VottImageTag.values())
+
+    def __build_id_to_VottImageTag(self, tag_db_cursor):
+        tag_id_to_VottImageTag = {}
+        try :
+            for row in tag_db_cursor:
+                logging.debug(row)
+                tag_id = row[0]
+                if tag_id in tag_id_to_VottImageTag:
+                    logging.debug("Existing ImageTag found, appending classification {}", row[6])
+                    tag_id_to_VottImageTag[tag_id].classification_names.append(row[6].strip())
+                else:
+                    logging.debug("No existing ImageTag found, creating new ImageTag: "
+                                  "id={0} x_min={1} x_max={2} x_min={3} x_max={4} classification={5} "
+                                  "image_height={6} image_width={7}"
+                                  .format(row[1], float(row[2]), float(row[3]), float(row[4]), float(row[5]),
+                                          [row[6].strip()], row[7], row[8]))
+                    tag_id_to_VottImageTag[tag_id] = VottImageTag(row[1], float(row[2]), float(row[3]),
+                                                                  float(row[4]), float(row[5]), [row[6].strip()],
+                                                                  row[7], row[8])
+        except Exception as e:
+            logging.error("An error occurred building VottImageTag dict: {0}".format(e))
+            raise
+        return tag_id_to_VottImageTag
+
+
+    def get_existing_classifications(self):
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                query = "SELECT classificationname from classification_info order by classificationname asc"
+                cursor.execute(query)
+
+                classification_set = set()
+                for row in cursor:
+                    logging.debug(row)
+                    classification_set.add(row[0])
+                logging.debug("Got back {0} classifications existing in db.".format(len(classification_set)))
+            finally:
+                cursor.close()
+        except Exception as e:
+            logging.error("An error occurred getting classifications from DB: {0}".format(e))
+            raise
+        finally:
+            conn.close()
+        return list(classification_set)
 
     def update_incomplete_images(self, list_of_image_ids, user_id):
         #TODO: Make sure the image ids are in a TAG_IN_PROGRESS state
@@ -229,6 +340,12 @@ def main():
     #   Checking in images been tagged
     #################################################################
 
+    # import sys
+    # import os
+    # sys.path.append("..")
+    # sys.path.append(os.path.abspath('db_provider'))
+    # from db_provider import DatabaseInfo, PostGresProvider
+
     #Replace me for testing
     db_config = DatabaseInfo("","","","")
     data_access = ImageTagDataAccess(PostGresProvider(db_config))
@@ -241,7 +358,9 @@ def main():
     image_tags = generate_test_image_tags(list(url_to_image_id_map.values()),4,4)
     data_access.update_tagged_images(image_tags,user_id)
 
-TestClassifications = ("maine coon","german shephard","goldfinch","mackerel"," african elephant","rattlesnake")
+
+TestClassifications = ("maine coon","german shephard","goldfinch","mackerel","african elephant","rattlesnake")
+
 
 def generate_test_image_infos(count):
     list_of_image_infos = []

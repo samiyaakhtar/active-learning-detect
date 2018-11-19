@@ -35,7 +35,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             # DB configuration
             data_access = ImageTagDataAccess(get_postgres_provider())
             user_id = data_access.create_user(user_name)
-            image_id_to_urls = data_access.get_images_for_tagging(image_count, user_id)
+            image_id_to_urls = data_access.get_tag_complete_images(image_count, user_id)
             image_urls = list(image_id_to_urls.values())
 
             image_id_to_image_tags = {}

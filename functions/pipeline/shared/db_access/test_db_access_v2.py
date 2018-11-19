@@ -74,7 +74,7 @@ class TestImageTagDataAccess(unittest.TestCase):
         with self.assertRaises(ArgumentException):
             data_access = ImageTagDataAccess(MockDBProvider())
             num_of_images = -5
-            data_access.get_new_images(num_of_images,5)
+            data_access.get_images_for_tagging(num_of_images, 5)
 
     def test_add_new_images_user_id_type_error(self):
         with self.assertRaises(TypeError):
