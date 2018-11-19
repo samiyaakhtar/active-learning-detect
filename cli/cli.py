@@ -2,12 +2,6 @@ import argparse
 import sys
 from pathlib import Path
 
-# Allow us to import utils
-config_dir = str(Path.cwd().parent / "utils")
-if config_dir not in sys.path:
-    sys.path.append(config_dir)
-from config import Config
-
 from operations import (
     download,
     upload,
@@ -19,6 +13,13 @@ from operations import (
 
 if __name__ == "__main__":
     
+    # Allow us to import utils
+    config_dir = str(Path.cwd().parent / "utils")
+    if config_dir not in sys.path:
+        sys.path.append(config_dir)
+    from config import Config
+    from blob_utils import BlobStorage
+
     # how i want to use the tool:
     # cli.py download --num-images 40
     # cli.py upload

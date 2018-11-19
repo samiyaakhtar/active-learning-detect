@@ -2,10 +2,16 @@ import requests
 import time
 import os
 import shutil
-import pathlib
+from pathlib import Path
+import sys
 import json
 import copy
 from azure.storage.blob import BlockBlobService, ContentSettings
+
+ # Allow us to import utils
+config_dir = str(Path.cwd().parent / "utils")
+if config_dir not in sys.path:
+    sys.path.append(config_dir)
 from blob_utils import BlobStorage
 
 DEFAULT_NUM_IMAGES = 40

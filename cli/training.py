@@ -5,13 +5,6 @@ import sys
 from pathlib import Path
 from azure.storage.blob import BlockBlobService, ContentSettings
 
-# Allow us to import utils
-config_dir = str(Path.cwd().parent / "utils")
-if config_dir not in sys.path:
-    sys.path.append(config_dir)
-from config import Config
-from blob_utils import BlobStorage
-
 CONFIG_PATH = os.environ.get('ALCONFIG', None)
 
 class TagData(object):
@@ -69,6 +62,13 @@ def download_vott_json(config, num_images):
             
 
 if __name__ == "__main__":
+    # Allow us to import utils
+    config_dir = str(Path.cwd().parent / "utils")
+    if config_dir not in sys.path:
+        sys.path.append(config_dir)
+    from config import Config
+    from blob_utils import BlobStorage
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--num-images', type=int)
     config = Config.read_config(CONFIG_PATH)
