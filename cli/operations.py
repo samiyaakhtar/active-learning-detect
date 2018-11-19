@@ -2,10 +2,10 @@ import requests
 import time
 import os
 import shutil
-from pathlib import Path
 import sys
 import json
 import copy
+import pathlib
 from azure.storage.blob import BlockBlobService, ContentSettings
 from utils.blob_utils import BlobStorage
 
