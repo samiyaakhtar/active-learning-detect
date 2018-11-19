@@ -2,9 +2,11 @@ import argparse
 import sys
 from pathlib import Path
 
-sys.path.append("../utils")
+# Allow us to import utils
+config_dir = str(Path.cwd().parent / "utils")
+if config_dir not in sys.path:
+    sys.path.append(config_dir)
 from config import Config
-from blob_utils import BlobStorage
 
 from operations import (
     download,

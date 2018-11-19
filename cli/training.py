@@ -5,9 +5,12 @@ import sys
 from pathlib import Path
 from azure.storage.blob import BlockBlobService, ContentSettings
 
-sys.path.append("../utils")
-from blob_utils import BlobStorage
+# Allow us to import utils
+config_dir = str(Path.cwd().parent / "utils")
+if config_dir not in sys.path:
+    sys.path.append(config_dir)
 from config import Config
+from blob_utils import BlobStorage
 
 CONFIG_PATH = os.environ.get('ALCONFIG', None)
 
