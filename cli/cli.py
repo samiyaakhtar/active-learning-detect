@@ -1,6 +1,4 @@
 import argparse
-import sys
-from pathlib import Path
 from utils.config import Config
 from operations import (
     download,

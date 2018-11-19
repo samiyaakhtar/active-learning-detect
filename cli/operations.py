@@ -2,7 +2,6 @@ import requests
 import time
 import os
 import shutil
-import sys
 import json
 import copy
 import pathlib

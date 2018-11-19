@@ -1,8 +1,6 @@
 import argparse
 import os
 import requests
-import sys
-from pathlib import Path
 from azure.storage.blob import BlockBlobService, ContentSettings
 from utils.config import Config
 from utils.blob_utils import BlobStorage
