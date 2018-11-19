@@ -23,13 +23,12 @@ fi
 echo "Creating Storage Account"
 
 az storage account create --resource-group $RESOURCE_GROUP --name $STORAGE_NAME --sku Standard_LRS
-STORAGE_KEY=`az storage account keys list -n $STORAGE_NAME --query [0].value`
-
+STORAGE_KEY=$(az storage account keys list -n $STORAGE_NAME --resource-group $RESOURCE_GROUP  --query [0].value)
 
 echo "Creating Temporary Storage Container"
-az storage container create -n temporary --account-key $STORAGE_KEY --account-name $STORAGE_NAME
+az storage container create -n $STORAGE_TEMP_CONTAINER --account-key $STORAGE_KEY --account-name $STORAGE_NAME
 
 echo "Creating Permanent Storage Container"
-az storage container create -n permanent --account-key $STORAGE_KEY --account-name $STORAGE_NAME
+az storage container create -n $STORAGE_PERM_CONTAINER --account-key $STORAGE_KEY --account-name $STORAGE_NAME
 
 echo "Done!"

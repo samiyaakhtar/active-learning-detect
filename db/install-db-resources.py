@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import pg8000
 import os
 import sys

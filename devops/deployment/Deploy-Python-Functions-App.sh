@@ -10,10 +10,19 @@ StorageName=$2
 FunctionAppName=$3
 AppInsightsName=$4
 
-if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
-    echo "Usage: 'sh $0 (Azure Resource Group Name) (Azure Function Storage Name) (Azure Function App Name) (AppInsightsName)'"
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ] || [ -z "$7" ] || [ -z "$8" ] || [ -z "$9" ] || [ -z "${10}" ] || [ -z "${11}" ] || [ -z "${12}" ]; then
+    echo "Usage: 'sh $0 (Azure Resource Group Name) (Azure Function Storage Name) (Azure Function App Name) (AppInsightsName) (Storage account) (Source container) (Dest container) (DB Server Name) (DB Username) (DB Password) (DB Name)'"
     exit 1
 fi
+
+STORAGE_ACCOUNT_NAME="$5"
+STORAGE_ACCOUNT_KEY="$6"
+SOURCE_CONTAINER_NAME="$7"
+DESTINATION_CONTAINER_NAME="$8"
+DB_HOST="$9" 
+DB_USER="${10}" 
+DB_PASS="${11}" 
+DB_NAME="${12}" 
 
 StorageNameLength=${#StorageName}
 if [ $StorageNameLength -lt 3 -o $StorageNameLength -gt 24 ]; then
@@ -68,7 +77,20 @@ echo "Retrieving App Insights Id for $AppInsightsName"
 echo
 AppInsightsKey=$(az resource show -g $ResourceGroup -n $AppInsightsName --resource-type "Microsoft.Insights/components" --query properties.InstrumentationKey)
 
+#Remove double quotes
+AppInsightsKey=$(sed -e 's/^"//' -e 's/"$//' <<<"$AppInsightsKey")
+STORAGE_ACCOUNT_KEY=$(sed -e 's/^"//' -e 's/"$//' <<<"$STORAGE_ACCOUNT_KEY")
+
 echo
-echo "Setting application setting APPINSIGHTS_INSTRUMENTATIONKEY on $FunctionAppName"
+echo "Setting application setting on $FunctionAppName"
 echo
-az functionapp config appsettings set --name $FunctionAppName --resource-group $ResourceGroup --settings "APPINSIGHTS_INSTRUMENTATIONKEY=$AppInsightsKey"
+az functionapp config appsettings set --name $FunctionAppName --resource-group $ResourceGroup \
+    --settings "APPINSIGHTS_INSTRUMENTATIONKEY=$AppInsightsKey" \
+                "DB_HOST=$DB_HOST" \
+                "DB_USER=$DB_USER" \
+                "DB_NAME=$DB_NAME" \
+                "DB_PASS=$DB_PASS" \
+                "STORAGE_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME" \
+                "STORAGE_ACCOUNT_KEY=$STORAGE_ACCOUNT_KEY" \
+                "SOURCE_CONTAINER_NAME=$SOURCE_CONTAINER_NAME" \
+                "DESTINATION_CONTAINER_NAME=$DESTINATION_CONTAINER_NAME"
