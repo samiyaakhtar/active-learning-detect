@@ -3,10 +3,13 @@ import json
 import pathlib
 from unittest.mock import Mock
 
+from utils.config import (
+    read_config_with_parsed_config,
+    MissingConfigException
+)
 from operations import (
     _download_bounds,
     upload,
-    read_config_with_parsed_config,
     MissingConfigException,
     ImageLimitException,
     DEFAULT_NUM_IMAGES,
