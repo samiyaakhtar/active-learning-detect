@@ -3,10 +3,7 @@ import json
 import pathlib
 from unittest.mock import Mock
 
-from utils.config import (
-    read_config_with_parsed_config,
-    MissingConfigException
-)
+from utils.config import Config, MissingConfigException
 from operations import (
     _download_bounds,
     upload,
@@ -69,19 +66,19 @@ class TestConfig(unittest.TestCase):
 
     def test_missing_storage_section(self):
         with self.assertRaises(MissingConfigException):
-            read_config_with_parsed_config(
+            Config.read_config_with_parsed_config(
                 self._mock_sections([FUNCTIONS_SECTION], {})
             )
 
     def test_missing_functions_section(self):
         with self.assertRaises(MissingConfigException):
-            read_config_with_parsed_config(
+            Config.read_config_with_parsed_config(
                 self._mock_sections([STORAGE_SECTION], {})
             )
 
     def test_missing_tagging_section(self):
         with self.assertRaises(MissingConfigException):
-            read_config_with_parsed_config(
+            Config.read_config_with_parsed_config(
                 self._mock_sections([FUNCTIONS_SECTION, STORAGE_SECTION], {})
             )
 
@@ -117,7 +114,7 @@ class TestConfig(unittest.TestCase):
             }
         )
 
-        read_config_with_parsed_config(mock_data)
+        Config.read_config_with_parsed_config(mock_data)
 
 
 class TestPrependFilepaths(unittest.TestCase):
