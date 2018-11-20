@@ -1,12 +1,11 @@
 import argparse
-
+from utils.config import Config
 from operations import (
     download,
     upload,
     onboard,
     LOWER_LIMIT,
     UPPER_LIMIT,
-    read_config,
     CONFIG_PATH
 )
 
@@ -28,7 +27,7 @@ if __name__ == "__main__":
 
     operation = args.operation
 
-    config = read_config(CONFIG_PATH)
+    config = Config.read_config(CONFIG_PATH)
 
     if operation == 'download':
         download(config, args.num_images)
@@ -38,3 +37,4 @@ if __name__ == "__main__":
         onboard(config, args.folder)
     else:
         upload(config)
+

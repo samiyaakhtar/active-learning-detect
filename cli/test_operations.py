@@ -3,15 +3,8 @@ import json
 import pathlib
 from unittest.mock import Mock
 
-from operations import (
-    _download_bounds,
-    upload,
-    read_config_with_parsed_config,
-    MissingConfigException,
-    ImageLimitException,
-    DEFAULT_NUM_IMAGES,
-    LOWER_LIMIT,
-    UPPER_LIMIT,
+from utils.config import Config, MissingConfigException
+from utils.config import (
     FUNCTIONS_SECTION,
     FUNCTIONS_KEY,
     FUNCTIONS_URL,
@@ -22,9 +15,14 @@ from operations import (
     TAGGING_SECTION,
     TAGGING_LOCATION_KEY,
     TAGGING_USER_KEY,
-    functions_config_section,
-    storage_config_section,
-    tagging_config_section,
+)
+from operations import (
+    _download_bounds,
+    upload,
+    ImageLimitException,
+    DEFAULT_NUM_IMAGES,
+    LOWER_LIMIT,
+    UPPER_LIMIT,
     prepend_file_paths,
     trim_file_paths
 )
@@ -66,33 +64,33 @@ class TestConfig(unittest.TestCase):
 
     def test_missing_storage_section(self):
         with self.assertRaises(MissingConfigException):
-            read_config_with_parsed_config(
+            Config.read_config_with_parsed_config(
                 self._mock_sections([FUNCTIONS_SECTION], {})
             )
 
     def test_missing_functions_section(self):
         with self.assertRaises(MissingConfigException):
-            read_config_with_parsed_config(
+            Config.read_config_with_parsed_config(
                 self._mock_sections([STORAGE_SECTION], {})
             )
 
     def test_missing_tagging_section(self):
         with self.assertRaises(MissingConfigException):
-            read_config_with_parsed_config(
+            Config.read_config_with_parsed_config(
                 self._mock_sections([FUNCTIONS_SECTION, STORAGE_SECTION], {})
             )
 
     def test_missing_functions_config_values(self):
         with self.assertRaises(MissingConfigException):
-            functions_config_section({})
+            Config.functions_config_section({})
 
     def test_missing_storage_config_values(self):
         with self.assertRaises(MissingConfigException):
-            storage_config_section({})
+            Config.storage_config_section({})
 
     def test_missing_tagging_config_values(self):
         with self.assertRaises(MissingConfigException):
-            tagging_config_section({})
+            Config.tagging_config_section({})
 
     def test_acceptable_config(self):
         mock_data = self._mock_sections(
@@ -114,7 +112,7 @@ class TestConfig(unittest.TestCase):
             }
         )
 
-        read_config_with_parsed_config(mock_data)
+        Config.read_config_with_parsed_config(mock_data)
 
 
 class TestPrependFilepaths(unittest.TestCase):
