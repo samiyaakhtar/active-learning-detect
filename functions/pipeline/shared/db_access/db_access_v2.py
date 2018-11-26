@@ -392,5 +392,6 @@ if __name__ == "__main__":
     #Log to console when run locally
     console = logging.StreamHandler()
     log = logging.getLogger()
+    log.setLevel(logging.getLevelName('DEBUG'))
     log.addHandler(console)
     main()
