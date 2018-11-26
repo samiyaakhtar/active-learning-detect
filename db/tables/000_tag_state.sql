@@ -1,5 +1,5 @@
 -- Set up table
-CREATE TABLE TagState (
-    TagStateId integer NOT NULL,
+CREATE TABLE Tag_State (
+    TagStateId integer PRIMARY KEY,
     TagStateName text NOT NULL
 );
