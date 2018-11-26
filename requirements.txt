@@ -8,3 +8,4 @@ protobuf==3.6.1
 requests
 six==1.11.0
 pg8000==1.12.3
+Pillow==5.3.0
