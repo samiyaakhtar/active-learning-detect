@@ -32,7 +32,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     if not raw_url_list:
         return func.HttpResponse("ERROR: URL list empty.", status_code=401)
-    
+
     # Check to ensure image URLs sent by client are all unique.
     url_list = set(raw_url_list)
 
@@ -44,7 +44,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         data_access = ImageTagDataAccess(get_postgres_provider())
-        user_id= data_access.create_user(user_name)
+        user_id = data_access.create_user(user_name)
 
         logging.debug("Add new images to the database, and retrieve a dictionary ImageId's mapped to ImageUrl's")
         image_id_url_map = data_access.add_new_images(image_object_list,user_id)

@@ -61,7 +61,7 @@ export RESOURCE_GROUP=$RESOURCE_GROUP
 export STORAGE_NAME=$PROJECT_STORAGE_ACCOUNT
 export STORAGE_TEMP_CONTAINER=$PROJECT_STORAGE_TEMP_CONTAINER
 export STORAGE_PERM_CONTAINER=$PROJECT_STORAGE_PERM_CONTAINER
-./create-storage.sh
+./Deploy-Storage.sh
 if [ "$?" -ne 0 ]; then
     echo "Unable to create storage accounts and containers"
     exit 1
@@ -88,7 +88,7 @@ if [ "$?" -ne 0 ]; then
 fi
 
 . ./Deploy-Pipeline-Functions.sh $FUNCTION_APP_NAME ../../functions/pipeline
-if [ "$?" -ne 0 ]; then 
+if [ "$?" -ne 0 ]; then
     echo "Unable to deploy pipeline functions"
     exit 1
 fi

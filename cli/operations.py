@@ -33,9 +33,15 @@ def onboard(config, folder_name):
             print('Uploading image ' + image)
 
             # Upload the created file, use image name for the blob name
-            blob_storage.create_blob_from_path(config.get("storage_container"), image, local_path, content_settings=ContentSettings(content_type='image/png'))
+            blob_storage.create_blob_from_path(
+                config.get("storage_container"),
+                image,
+                local_path,
+                content_settings=ContentSettings(content_type='image/png')
+            )
+
             images.append(uri + image)
-    
+
     # Post this data to the server to add them to database and kick off active learning
     data = {}
     data['imageUrls'] = images
@@ -47,6 +53,8 @@ def onboard(config, folder_name):
 
     #TODO: Ensure we don't get 4xx or 5xx return codes
     response = requests.post(functions_url, data=json.dumps(data), headers=headers, params=query)
+    response.raise_for_status()
+
     json_resp = response.json()
     count = len(json_resp['imageUrls'])
     print("Successfully uploaded " + str(count) + " images.")
@@ -120,7 +128,7 @@ def download_images(config, image_dir, json_resp):
         file_name = url.split('/')[-1]
 
         #TODO: We will download an empty file if we get a permission error on the blob store URL
-        # We should raise an exception. For now the blob store must be publically accessible 
+        # We should raise an exception. For now the blob store must be publically accessible
         response = requests.get(url)
         file_path = pathlib.Path(image_dir / file_name)
 
@@ -210,7 +218,7 @@ def trim_file_paths(json_data):
 
     munged_visited_frames = []
     for frame_path in visited_frames:
-        #TODO: This line assumes that the visited frames name is a full path. 
+        #TODO: This line assumes that the visited frames name is a full path.
         # Centralize this business logic in the codebase. It probably exists in shared code too
         munged_visited_frames.append(
             pathlib.Path(frame_path).name

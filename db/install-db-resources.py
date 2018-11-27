@@ -24,7 +24,7 @@ def execute_queries_from_map(conn, file_query_map):
         for file_path,query in file_query_map.items():
             cursor.execute(query)
             conn.commit()
-            print("\t{0}".format(file_path))         
+            print("\t{0}".format(file_path))
     return
 
 def database_exists(conn, db_name):
@@ -65,7 +65,7 @@ def install_extensions(conn, list_of_extensions):
     if (len(list_of_extensions) > 0):
         cursor = conn.cursor()
         conn.autocommit = True
-        for ext in list_of_extensions:     
+        for ext in list_of_extensions:
             query = "CREATE EXTENSION {0};"
             cursor.execute(query.format(ext))
             print("Installed extension named '{0}'".format(ext))
@@ -107,10 +107,10 @@ def main(db_name, overwrite_db):
         if(os.getenv("DB_HOST") is None or os.getenv("DB_USER") is None or os.getenv("DB_PASS") is None):
             print("Please set environment variables for DB_HOST, DB_USER, DB_PASS")
             return
-        
+
         if (database_exists(get_default_connection(), db_name) and overwrite_db):
             remove_database(get_default_connection(),db_name)
-        elif (database_exists(get_default_connection(), db_name) and not overwrite_db):    
+        elif (database_exists(get_default_connection(), db_name) and not overwrite_db):
             print("Database {0} already exists. Please see --help for overwrite option.".format(db_name))
             return
 
@@ -121,12 +121,12 @@ def main(db_name, overwrite_db):
         install_extensions(get_connection_for_db(db_name),['citext'])
 
         #Connect to the new database and install resources
-        conn = get_connection_for_db(db_name) 
+        conn = get_connection_for_db(db_name)
         sub_dirs = ["tables","functions","triggers","data"]
         execute_files_in_dir_list(conn,sub_dirs)
 
         print("Done!")
-    except Exception as e: 
+    except Exception as e:
         print(e)
         #traceback.print_exc()
 
@@ -141,4 +141,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     database_name = args.database_name
-    main(args.database_name,args.overwrite)           
+    main(args.database_name,args.overwrite)

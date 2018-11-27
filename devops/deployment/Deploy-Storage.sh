@@ -26,9 +26,9 @@ az storage account create --resource-group $RESOURCE_GROUP --name $STORAGE_NAME 
 STORAGE_KEY=$(az storage account keys list -n $STORAGE_NAME --resource-group $RESOURCE_GROUP  --query [0].value)
 
 echo "Creating Temporary Storage Container"
-az storage container create -n $STORAGE_TEMP_CONTAINER --account-key $STORAGE_KEY --account-name $STORAGE_NAME
+az storage container create -n $STORAGE_TEMP_CONTAINER --account-key $STORAGE_KEY --account-name $STORAGE_NAME --public-access container
 
 echo "Creating Permanent Storage Container"
-az storage container create -n $STORAGE_PERM_CONTAINER --account-key $STORAGE_KEY --account-name $STORAGE_NAME
+az storage container create -n $STORAGE_PERM_CONTAINER --account-key $STORAGE_KEY --account-name $STORAGE_NAME --public-access container
 
 echo "Done!"
