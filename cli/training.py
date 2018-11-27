@@ -1,5 +1,6 @@
 import argparse
 import os
+import csv
 import requests
 from azure.storage.blob import BlockBlobService, ContentSettings
 from utils.config import Config
@@ -19,12 +20,16 @@ class TagData(object):
         self.name = name
         self.imageUrl = imageUrl
 
+
 def train(config, num_images):
     # First, download vott json for tagging complete images
     vott_json = download_vott_json(config, num_images)
 
     # Grab these images from the blob storage
     download_images(vott_json)
+
+    # create csv file from this data
+    convert_to_csv(vott_json)
 
 
 def download_images(vott_json):
@@ -59,6 +64,17 @@ def download_vott_json(config, num_images):
     
     print(vott_json)
     return vott_json
+
+
+def convert_to_csv(vott_json):
+    with open('data.csv', 'w') as csvfile:
+        filewriter = csv.writer(csvfile, delimiter=',',
+                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        for item in vott_json:
+            for tags in vott_json[item]:
+                for tag in tags.tags:
+                    data = [tags.name, tag, tags.x1, tags.x2, tags.y1, tags.y2, tags.height, tags.width, '', 0, 0]
+                    filewriter.writerow(data)
             
 
 if __name__ == "__main__":
