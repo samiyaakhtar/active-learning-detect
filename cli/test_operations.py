@@ -22,9 +22,7 @@ from operations import (
     ImageLimitException,
     DEFAULT_NUM_IMAGES,
     LOWER_LIMIT,
-    UPPER_LIMIT,
-    prepend_file_paths,
-    trim_file_paths
+    UPPER_LIMIT
 )
 
 
@@ -113,111 +111,6 @@ class TestConfig(unittest.TestCase):
         )
 
         Config.read_config_with_parsed_config(mock_data)
-
-
-class TestPrependFilepaths(unittest.TestCase):
-    def _mock_json(self):
-        json_str_fixture = """
-        {
-            "frames": {
-                "st1012.png": [
-                    {
-                    }
-                ],
-                "st1013.png": [
-                    {
-                    }
-                ],
-                "st1014.png": [
-                    {
-                    }
-                ]
-            },
-            "visitedFrames": [
-            ]
-        }
-        """
-
-        return json.loads(json_str_fixture)
-
-    def test_correct_number_of_paths(self):
-        json_resp = self._mock_json()
-
-        data_path = pathlib.Path('/data')
-        prepended_json = prepend_file_paths(data_path, json_resp)
-
-        self.assertEqual(3, len(prepended_json['frames']))
-
-    def test_correct_paths(self):
-        json_resp = self._mock_json()
-
-        data_path = pathlib.Path('/data')
-        expected = ['/data/st1012.png', '/data/st1013.png', '/data/st1014.png']
-        prepended_json = prepend_file_paths(data_path, json_resp)
-
-        for key in prepended_json['frames'].keys():
-            self.assertIn(key, expected)
-
-    def test_deep_copy(self):
-        json_resp = self._mock_json()
-        data_path = pathlib.Path('/data')
-
-        prepended_json = prepend_file_paths(data_path, json_resp)
-        self.assertNotEqual(id(json_resp), id(prepended_json))
-
-
-class TestTrimFilepaths(unittest.TestCase):
-    def _mock_json(self):
-        json_str_fixture = """
-        {
-            "frames": {
-                "/data/st1012.png": [
-                    {
-                    }
-                ],
-                "/data/st1013.png": [
-                    {
-                    }
-                ],
-                "/data/st1014.png": [
-                    {
-                    }
-                ]
-            },
-            "visitedFrames": [
-                "/data/st1012.png",
-                "/data/st1013.png",
-                "/data/st1014.png"
-            ]
-        }
-        """
-
-        return json.loads(json_str_fixture)
-
-    def test_trimmed_paths(self):
-        json_resp = self._mock_json()
-
-        expected = ['st1012.png', 'st1013.png', 'st1014.png']
-        munged_json = trim_file_paths(json_resp)
-
-        for frame_key in munged_json['frames'].keys():
-            self.assertIn(frame_key, expected)
-
-        for frame in munged_json['visitedFrames']:
-            self.assertIn(frame, expected)
-
-    def test_correct_number_of_paths(self):
-        json_resp = self._mock_json()
-        munged_json = trim_file_paths(json_resp)
-
-        self.assertEqual(3, len(munged_json['frames']))
-        self.assertEqual(3, len(munged_json['visitedFrames']))
-
-    def test_deep_copy(self):
-        json_resp = self._mock_json()
-        munged_json = trim_file_paths(json_resp)
-        self.assertNotEqual(id(json_resp), id(munged_json))
-
 
 if __name__ == '__main__':
     unittest.main()

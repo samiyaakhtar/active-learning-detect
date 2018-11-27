@@ -30,9 +30,9 @@ TAGGING_USER="bhargav"
 `FUNCTIONS_KEY` is the Azure Functions Key that allows your CLI to authenticate with the management function
 `FUNCTIONS_URL` is the URL of the Function deployed to Azure
 
-`STORAGE_ACCOUNT` is the name of the Azure Storage Account used to upload images and vott json.
+`STORAGE_ACCOUNT` is the name of the Azure Storage Account used to upload images
 `STORAGE_KEY` is the secret key of the Azure Storage Account
-`STORAGE_CONTAINER` is the name of the container where the CLI deposits vott json files.
+`STORAGE_CONTAINER` is the name of the container where the CLI deposits your image files.
 
 `TAGGING_LOCATION` is the location on the user's machine where media will be downloaded
 `TAGGING_USER` is your username.
@@ -41,9 +41,11 @@ TAGGING_USER="bhargav"
 
 #### Initialize a dataset/Onboard an existing dataset.
 
-*Not Implemented*
+Usage: `python3 -m cli onboard -f /path/to/images/`
 
-Usage: `python3 -m cli onboard`
+Assuming your directory `/path/to/images` is a flat directory of images, you can use this CLI invocation to upload your images to a temporary storage container.
+
+The onboarding function is then invoked, processing your images into the database, making them available for downloading.
 
 #### Download
 
