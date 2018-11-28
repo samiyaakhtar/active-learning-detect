@@ -1,4 +1,6 @@
 #!/bin/bash
+# Fail on first error
+set -e
 # Source environmental variables
 set -a
 sed -i 's/\r//g' $1
