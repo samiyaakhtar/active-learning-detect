@@ -80,7 +80,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Internal error occured", status_code=503)
 
 
-# Given a list ofnimage URL's, build an ImageInfo object for each, and return a list of these image objects.
+# Given a list of image URL's, build an ImageInfo object for each, and return a list of these image objects.
 def build_objects_from_url_list(url_list):
     image_object_list = []
     for url in url_list:
