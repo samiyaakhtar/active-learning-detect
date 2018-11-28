@@ -2,7 +2,7 @@ import argparse
 import os
 
 from utils.config import Config
-from operations import (
+from cli.operations import (
     download,
     upload,
     onboard_folder,
