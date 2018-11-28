@@ -16,7 +16,7 @@ from utils.config import (
     TAGGING_LOCATION_KEY,
     TAGGING_USER_KEY,
 )
-from operations import (
+from .operations import (
     _download_bounds,
     upload,
     ImageLimitException,
