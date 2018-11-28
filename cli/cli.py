@@ -23,7 +23,9 @@ if __name__ == "__main__":
     )
 
     parser.add_argument('-f', '--folder')
-    parser.add_argument('-c', '--container')
+    parser.add_argument('-a', '--storage-account')
+    parser.add_argument('-c', '--storage-container')
+    parser.add_argument('-k', '--storage-key')
     parser.add_argument('-n', '--num-images', type=int)
 
     args = parser.parse_args()
@@ -34,13 +36,18 @@ if __name__ == "__main__":
 
     if operation == 'download':
         download(config, args.num_images)
-    elif operation == 'onboard':
+    elif operation == 'upload':
+        upload(config)
+    else:
         if args.folder:
             onboard_folder(config, args.folder)
-        elif args.container:
-            onboard_container(config, args.container)
+        elif args.storage_container and args.storage_account and args.storage_key:
+            onboard_container(
+                config,
+                args.storage_account,
+                args.storage_key,
+                args.storage_container
+            )
         else:
-            print("No folder or container argument \
-            passed - nothing to onboard")
-    else:
-        upload(config)
+            print("No folder, storage account, container, or key argument \
+            passed - could not onboard.any")

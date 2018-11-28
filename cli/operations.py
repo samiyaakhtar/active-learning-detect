@@ -53,13 +53,13 @@ def onboard_folder(config, folder_name):
     # Post this data to the server to add them to database and kick off active learning
     data = {}
     data['imageUrls'] = images
-    headers = {'content-type': 'application/json'}
+
     query = {
         "code": config.get('key'),
         "userName": user_name
     }
 
-    response = requests.post(functions_url, data=json.dumps(data), headers=headers, params=query)
+    response = requests.post(functions_url, json=data, params=query)
     response.raise_for_status()
 
     json_resp = response.json()
@@ -69,9 +69,27 @@ def onboard_folder(config, folder_name):
         print(url)
 
 
-def onboard_container(config, container):
+def onboard_container(config, account, key, container):
     print("onboarding from storage container")
-    pass
+    function_url = config.get('url') + '/api/onboardcontainer'
+    user_name = config.get("tagging_user")
+
+    print("Onboarding storage container " + container + " into dataset")
+
+    query = {
+        "userName": user_name
+    }
+
+    data = {
+        "storageAccount": account,
+        "storageAccountKey": key,
+        "storageContainer": container
+    }
+
+    resp = requests.post(function_url, params=query, json=data)
+    resp.raise_for_status()
+
+    print("Set up container for onboarding. Onboarding may take some time.")
 
 
 def _download_bounds(num_images):
