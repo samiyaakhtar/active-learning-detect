@@ -10,8 +10,8 @@ StorageName=$2
 FunctionAppName=$3
 AppInsightsName=$4
 
-if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ] || [ -z "$7" ] || [ -z "$8" ] || [ -z "$9" ] || [ -z "${10}" ] || [ -z "${11}" ] || [ -z "${12}" ]; then
-    echo "Usage: 'sh $0 (Azure Resource Group Name) (Azure Function Storage Name) (Azure Function App Name) (AppInsightsName) (Storage account) (Source container) (Dest container) (DB Server Name) (DB Username) (DB Password) (DB Name)'"
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ] || [ -z "$7" ] || [ -z "$8" ] || [ -z "$9" ] || [ -z "${10}" ] || [ -z "${11}" ] || [ -z "${12}" ] || [ -z "${13}" ] then
+    echo "Usage: 'sh $0 (Azure Resource Group Name) (Azure Function Storage Name) (Azure Function App Name) (AppInsightsName) (Storage account) (Source container) (Dest container) (DB Server Name) (DB Username) (DB Password) (DB Name) (Storage Connection String)'"
     exit 1
 fi
 
@@ -19,10 +19,11 @@ STORAGE_ACCOUNT_NAME="$5"
 STORAGE_ACCOUNT_KEY="$6"
 SOURCE_CONTAINER_NAME="$7"
 DESTINATION_CONTAINER_NAME="$8"
-DB_HOST="$9" 
-DB_USER="${10}" 
-DB_PASS="${11}" 
-DB_NAME="${12}" 
+DB_HOST="$9"
+DB_USER="${10}"
+DB_PASS="${11}"
+DB_NAME="${12}"
+STORAGE_CONNECTION_STRING="${13}"
 
 StorageNameLength=${#StorageName}
 if [ $StorageNameLength -lt 3 -o $StorageNameLength -gt 24 ]; then
@@ -93,4 +94,5 @@ az functionapp config appsettings set --name $FunctionAppName --resource-group $
                 "STORAGE_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME" \
                 "STORAGE_ACCOUNT_KEY=$STORAGE_ACCOUNT_KEY" \
                 "SOURCE_CONTAINER_NAME=$SOURCE_CONTAINER_NAME" \
-                "DESTINATION_CONTAINER_NAME=$DESTINATION_CONTAINER_NAME"
+                "DESTINATION_CONTAINER_NAME=$DESTINATION_CONTAINER_NAME" \
+                "STORAGE_CONNECTION_STRING=$STORAGE_CONNECTION_STRING"

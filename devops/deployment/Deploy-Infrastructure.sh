@@ -67,6 +67,8 @@ if [ "$?" -ne 0 ]; then
     exit 1
 fi
 
+STORAGE_CONNECTION_STRING=$(az storage account show-connection-string -n $PROJECT_STORAGE_ACCOUNT -g $RESOURCE_GROUP)
+
 # Setup azure python function
 PROJECT_STORAGE_ACCOUNT_KEY=$(az storage account keys list -n $PROJECT_STORAGE_ACCOUNT --query [0].value --resource-group $RESOURCE_GROUP)
 . ./Deploy-Python-Functions-App.sh \
@@ -81,7 +83,8 @@ PROJECT_STORAGE_ACCOUNT_KEY=$(az storage account keys list -n $PROJECT_STORAGE_A
         $DB_HOST_FULL_NAME \
         $DATABASE_USERNAME_AT_HOST \
         $DATABASE_PASSWORD \
-        $DATABASE_NAME
+        $DATABASE_NAME \
+        $STORAGE_CONNECTION_STRING
 if [ "$?" -ne 0 ]; then
     echo "Unable to setup app insights"
     exit 1

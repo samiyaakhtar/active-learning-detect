@@ -31,4 +31,7 @@ az storage container create -n $STORAGE_TEMP_CONTAINER --account-key $STORAGE_KE
 echo "Creating Permanent Storage Container"
 az storage container create -n $STORAGE_PERM_CONTAINER --account-key $STORAGE_KEY --account-name $STORAGE_NAME --public-access container
 
+echo "Creating an onboarding queue"
+az storage queue create -n onboardqueue --account-key $STORAGE_KEY --account-name $STORAGE_NAME
+
 echo "Done!"
