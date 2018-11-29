@@ -23,7 +23,7 @@ VM_ADMIN_USER=<b>johndoe</b>
 VM_SSH_KEY=~/.ssh/act-learn-key.pub
 </pre>
 
-Lastly execute the deploy_dsvm.sh with your edited config file as a parameter. Note that the Azure CLI is required. Install [here](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) is needed.
+Lastly execute the deploy_dsvm.sh with your edited config file as a parameter. Note that the Azure CLI is required. Install [here](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) if needed.
 
 ```sh
 $ sh deploy_dsvm.sh config/dsvm_config.sh
@@ -32,13 +32,13 @@ $ sh deploy_dsvm.sh config/dsvm_config.sh
 ## Environment Setup 
 We provide a module that will copy over a shell script to your DSVM and execute the shell script to setup an active learning environment.
 
-We requirement that your ssh key be added to the SSH agent. You can do so my using the **_ssh-add_** command
+We require that your SSH key be added to the SSH agent. To add your SSH key to the SSH agent use the **_ssh-add_** command
 
 ```sh
 $ ssh-add -K ~/.ssh/act-learn-key
 ```
 
-To copy and execute the shells script use the following command
+To copy and execute the shell script on the DSVM use the following command
 
 ```sh
 $ python setup-tensorflow.py --host admin@127.0.0.1 -k ~/.ssh/act-learn-key -s setup-tensorflow.sh
