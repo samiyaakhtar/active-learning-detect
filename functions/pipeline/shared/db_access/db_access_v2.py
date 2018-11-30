@@ -230,6 +230,30 @@ class ImageTagDataAccess(object):
             conn.close()
         return list(classification_set)
 
+    def get_number_of_tags_by_class(self):
+        # select count(*), b.classificationname from tags_classification a join  classification_info b on a.classificationid = b.classificationid group by b.classificationname
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                query = "select count(*), b.classificationname from tags_classification a join  classification_info b on a.classificationid = b.classificationid group by b.classificationname"
+                cursor.execute(query)
+
+                classification_list = list()
+                for row in cursor:
+                    logging.debug(row)
+                    classification_list.append(tuple((row[0], row[1])))
+                logging.debug("Got back {0} classifications existing in db.".format(len(classification_list)))
+            finally:
+                cursor.close()
+        except Exception as e:
+            logging.error("An error occurred getting classifications from DB: {0}".format(e))
+            raise
+        finally:
+            conn.close()
+        return list(classification_list)
+
+
     def update_incomplete_images(self, list_of_image_ids, user_id):
         #TODO: Make sure the image ids are in a TAG_IN_PROGRESS state
         self._update_images(list_of_image_ids,ImageTagState.INCOMPLETE_TAG,user_id, self._db_provider.get_connection())
