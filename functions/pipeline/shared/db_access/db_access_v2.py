@@ -239,11 +239,11 @@ class ImageTagDataAccess(object):
                 query = "select count(*), b.classificationname from tags_classification a join  classification_info b on a.classificationid = b.classificationid group by b.classificationname"
                 cursor.execute(query)
 
-                classification_list = list()
+                classifications= {}
                 for row in cursor:
                     logging.debug(row)
-                    classification_list.append(tuple((row[0], row[1])))
-                logging.debug("Got back {0} classifications existing in db.".format(len(classification_list)))
+                    classifications[row[1]] = row[0]
+                logging.debug("Got back {0} classifications existing in db.".format(classifications))
             finally:
                 cursor.close()
         except Exception as e:
@@ -251,7 +251,7 @@ class ImageTagDataAccess(object):
             raise
         finally:
             conn.close()
-        return list(classification_list)
+        return classifications
 
 
     def update_incomplete_images(self, list_of_image_ids, user_id):

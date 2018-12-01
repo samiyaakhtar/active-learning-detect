@@ -20,17 +20,17 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     rules_satisfied = True
     if MIN_TAGGED_IMAGES_PER_CLASS in config_json:        
-        separated = config_json[MIN_TAGGED_IMAGES_PER_CLASS]
-        separated = dict(item.lower().split(":") for item in separated.split(","))
-        for v, k in tags_by_class:
-            if k in separated:
-                if v < int(separated[k]):
-                    rules_satisfied = False
-                    break
+        rules = config_json[MIN_TAGGED_IMAGES_PER_CLASS]
+        rules = dict(item.lower().split(":") for item in rules.split(","))
+        logging.info("rules: " + str(rules))
+        for rule, val in rules.items():
+            if rule in tags_by_class and tags_by_class[rule] < int(val):
+                rules_satisfied = False
+                break
 
     if rules_satisfied and MIN_TAGGED_IMAGES in config_json:
         total_tags = 0
-        for v, k in tags_by_class:
+        for k, v in tags_by_class.items():
             total_tags = total_tags + v
         if total_tags < int(config_json[MIN_TAGGED_IMAGES]):
             rules_satisfied = False
