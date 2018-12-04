@@ -1,5 +1,8 @@
 
 import configparser
+import pathlib
+import os
+import shutil
 
 FUNCTIONS_SECTION = 'FUNCTIONS'
 FUNCTIONS_KEY = 'FUNCTIONS_KEY'
@@ -99,6 +102,19 @@ class Config():
         parser = configparser.ConfigParser()
         parser.read(config_path)
         return Config.read_config_with_parsed_config(parser)
+
+    @staticmethod
+    def initialize_tagging_location(config):
+        file_tree = pathlib.Path(os.path.expanduser(
+            config.get("tagging_location"))
+        )
+
+        if file_tree.exists():
+            print("Removing existing tag data directory: " + str(file_tree))
+
+            shutil.rmtree(str(file_tree), ignore_errors=True)
+
+        return pathlib.Path(file_tree)
 
 class MissingConfigException(Exception):
     pass

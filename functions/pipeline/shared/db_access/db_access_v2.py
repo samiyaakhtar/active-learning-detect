@@ -165,7 +165,7 @@ class ImageTagDataAccess(object):
                         "a.createddtim DESC limit {0}")
                 cursor.execute(query.format(number_of_images, ImageTagState.READY_TO_TAG))
                 for row in cursor:
-                    logging.info('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
+                    logging.debug('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
                     ready_to_tag_images[row[0]] = str(row[1])
             finally:
                 cursor.close()
