@@ -5,6 +5,10 @@ import requests
 from azure.storage.blob import BlockBlobService, ContentSettings
 from utils.config import Config
 from utils.blob_utils import BlobStorage
+import urllib.request
+
+import sys
+import time
 
 CONFIG_PATH = os.environ.get('ALCONFIG', None)
 
@@ -22,10 +26,10 @@ class TagData(object):
 
 
 def train(config, num_images):
-    # First, download vott json for tagging complete images
+    # First, downloxad vott json for tagging complete images
     vott_json = download_vott_json(config, num_images)
 
-    # Grab these images from the blob storage
+    # Grab tagged and totag images from the blob storage
     download_images(vott_json)
 
     # create csv file from this data
@@ -34,11 +38,24 @@ def train(config, num_images):
 
 def download_images(vott_json):
     blob_storage = BlobStorage.get_azure_storage_client(config)
-    if not os.path.exists('images'):
-        os.makedirs('images')
-    for image in vott_json:
+
+    # Download tagged images into tagged folder
+    if not os.path.exists('tagged'):
+        os.makedirs('tagged')
+    for image in vott_json["taggedImages"]:
         if (blob_storage.exists(config.get("storage_container"), image)):
-            blob_storage.get_blob_to_path(config.get("storage_container"),image, "images/{}".format(image))
+            blob_storage.get_blob_to_path(config.get("storage_container"),image, "tagged/{}".format(image))
+
+    # Download totag images into totag folder
+    if not os.path.exists('totag'):
+        os.makedirs('totag')
+    for image in vott_json["toTagImageUrls"]:
+        filename = get_image_name_from_url(image)
+        with urllib.request.urlopen(image) as response, open('totag/'+filename, 'wb') as out_file:
+            data = response.read() # a `bytes` object
+            out_file.write(data)
+    
+    print("Downloaded images into tagged/ and totag/")
 
 
 def download_vott_json(config, num_images):
@@ -47,9 +64,9 @@ def download_vott_json(config, num_images):
         "imageCount": num_images
     }
     functions_url = config.get('url') + '/api/taggedimages'
+    print("Downloading data for training, this may take a few minutes...")
     response = requests.get(functions_url, params=query)
     data = response.json()
-    print(data)
 
     vott_json = {}
     index = 0
@@ -61,21 +78,38 @@ def download_vott_json(config, num_images):
             array_tags.append(tagdata)
         vott_json[item] = array_tags
         index += 1
-    
-    print(vott_json)
-    return vott_json
+    return {
+        "taggedImages": vott_json,
+        "toTagImageUrls": data["toTagImageUrls"]
+    }
 
 
 def convert_to_csv(vott_json):
-    with open('data.csv', 'w') as csvfile:
+    # Convert tagged images into their own csv
+    with open('tagged.csv', 'w') as csvfile:
         filewriter = csv.writer(csvfile, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        for item in vott_json:
-            for tags in vott_json[item]:
+        for item in vott_json["taggedImages"]:
+            for tags in vott_json["taggedImages"][item]:
                 for tag in tags.tags:
                     data = [tags.name, tag, tags.x1, tags.x2, tags.y1, tags.y2, tags.height, tags.width, '', 0, 0]
                     filewriter.writerow(data)
-            
+    # Convert totag images into their own csv
+    with open('totag.csv', 'w') as csvfile:
+        filewriter = csv.writer(csvfile, delimiter=',',
+                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        for item in vott_json["toTagImageUrls"]:
+            filename = get_image_name_from_url(item)
+            data = [filename]
+            filewriter.writerow(data)
+    
+    print("Created csv files with vott metadata tagged.csv and totag.csv")
+
+
+def get_image_name_from_url(image_url):
+    s = image_url.split('/')
+    return s[len(s)-1]
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
