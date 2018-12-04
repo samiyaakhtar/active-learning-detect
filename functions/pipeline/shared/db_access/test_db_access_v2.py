@@ -38,10 +38,10 @@ class MockDBProvider:
     def __init__(self, fail = False):
         self.fail = fail
 
-    def get_connection(self):
-        if self.fail:
-            raise Exception
-        return MockConnection()
+    def get_connection(self): 
+        if self.fail: 
+            raise Exception 
+        return MockConnection() 
 
 class TestImageTagDataAccess(unittest.TestCase):
     def test_connection(self):
