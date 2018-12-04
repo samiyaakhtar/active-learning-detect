@@ -55,9 +55,10 @@ def download_images(vott_json, file_location):
     if not os.path.exists(file_location + '/totag'):
         os.makedirs(file_location + '/totag')
     folder = file_location + '/totag'
-    for image in vott_json["toTagImageUrls"]:
-        filename = get_image_name_from_url(image)
-        with urllib.request.urlopen(image) as response, open(folder + '/' + filename, 'wb') as out_file:
+    for image in vott_json["toTagImageInfo"]:
+        filename = image['id']
+        extension = image['location'].split('.')[-1]
+        with urllib.request.urlopen(image['location']) as response, open(folder + '/' + str(filename) + '.' + extension, 'wb') as out_file:
             data = response.read() # a `bytes` object
             out_file.write(data)
     
@@ -86,7 +87,7 @@ def download_vott_json(config, num_images):
         index += 1
     return {
         "taggedImages": vott_json,
-        "toTagImageUrls": data["toTagImageUrls"]
+        "toTagImageInfo": data["toTagImageInfo"]
     }
 
 
@@ -95,18 +96,21 @@ def convert_to_csv(vott_json, file_location):
     with open(file_location + '/tagged.csv', 'w') as csvfile:
         filewriter = csv.writer(csvfile, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        filewriter.writerow(['filename','class','xmin','xmax','ymin','ymax','height','width'])
         for item in vott_json["taggedImages"]:
             for tags in vott_json["taggedImages"][item]:
                 for tag in tags.tags:
-                    data = [tags.name, tag, tags.x1, tags.x2, tags.y1, tags.y2, tags.height, tags.width, '', 0, 0]
+                    data = [tags.name, tag, tags.x1, tags.x2, tags.y1, tags.y2, tags.height, tags.width]
                     filewriter.writerow(data)
+
     # Convert totag images into their own csv
     with open(file_location + '/totag.csv', 'w') as csvfile:
         filewriter = csv.writer(csvfile, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        for item in vott_json["toTagImageUrls"]:
-            filename = get_image_name_from_url(item)
-            data = [filename]
+        filewriter.writerow(['filename','class','xmin','xmax','ymin','ymax','height','width','folder','box_confidence','image_confidence'])
+        for item in vott_json["toTagImageInfo"]:
+            filename = get_image_name_from_url(item['location'])
+            data = [filename, 'NULL', 0, 0, 0, 0, item['height'], item['width'], '', 0, 0]
             filewriter.writerow(data)
     
     print("Created csv files with metadata " + file_location + "/tagged.csv and " + file_location + "/totag.csv")

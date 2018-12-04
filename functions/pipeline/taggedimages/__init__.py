@@ -35,10 +35,16 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             # DB configuration
             data_access = ImageTagDataAccess(get_postgres_provider())
             user_id = data_access.create_user(user_name)
+
+            # Get ready to tag images
+            ready_to_tag_images = data_access.get_ready_to_tag_images(image_count, user_id)
+            ready_to_tag_image_urls = list(ready_to_tag_images.values())
+
+            image_infos = data_access.get_image_info_for_image_ids(list(ready_to_tag_images.keys()))
+
+            # Get tag complete images
             image_id_to_urls = data_access.get_tag_complete_images(user_id)
             image_urls = list(image_id_to_urls.values())
-            read_to_tag_images = data_access.get_ready_to_tag_images(image_count, user_id)
-            read_to_tag_image_urls = list(read_to_tag_images.values())
 
             image_id_to_image_tags = {}
             for image_id in image_id_to_urls.keys():
@@ -50,7 +56,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
             return_body_json = {"imageUrls": image_urls,
                                 "vottJson": vott_json,
-                                "toTagImageUrls": read_to_tag_image_urls}
+                                "toTagImageInfo": image_infos}
 
             content = json.dumps(return_body_json)
             return func.HttpResponse(

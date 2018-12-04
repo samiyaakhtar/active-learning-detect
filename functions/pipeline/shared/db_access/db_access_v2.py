@@ -175,6 +175,39 @@ class ImageTagDataAccess(object):
         finally:
             conn.close()
         return ready_to_tag_images
+    
+
+    def get_image_info_for_image_ids(self, image_ids):
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                ids = ''
+                for id in image_ids:
+                    ids += str(id) + ','
+                ids = ids[:-1]
+                query = ("select imageid, originalimagename, imagelocation, height, width, createdbyuser from image_info where imageid IN ({0});")
+                cursor.execute(query.format(ids))
+                logging.debug("Got image info back for image_id={}".format(image_ids))
+
+                images_info = []
+                for row in cursor:
+                    info = {}
+                    info['height'] = row[3]
+                    info['width'] = row[4]
+                    info['name'] = row[1]
+                    info['location'] = row[2]
+                    info['id'] = row[0]
+                    images_info.append(info)
+            finally:
+                cursor.close()
+        except Exception as e:
+            logging.error("An error occurred getting image tags {0}".format(e))
+            raise
+        finally:
+            conn.close()
+        return list(images_info)
+
 
     def get_image_tags(self, image_id):
         if type(image_id) is not int:
