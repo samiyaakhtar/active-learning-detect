@@ -6,14 +6,13 @@ from azure.storage.blob import BlockBlobService, ContentSettings
 from utils.config import Config
 from utils.blob_utils import BlobStorage
 import urllib.request
-
 import sys
 import time
 
 CONFIG_PATH = os.environ.get('ALCONFIG', None)
 
 class TagData(object):
-    def __init__(self, imageUrl, name, tags, x1, x2, y1, y2, height, width):
+    def __init__(self, name, tags, x1, x2, y1, y2, height, width):
         self.tags = tags
         self.x1 = x1 
         self.x2 = x2
@@ -22,7 +21,6 @@ class TagData(object):
         self.height = height
         self.width = width
         self.name = name
-        self.imageUrl = imageUrl
 
 
 def train(config, num_images):
@@ -40,16 +38,19 @@ def train(config, num_images):
 
 
 def download_images(vott_json, file_location):
-    blob_storage = BlobStorage.get_azure_storage_client(config)
     print("Downloading images to " + file_location + ", this may take a few seconds...")
 
     # Download tagged images into tagged folder
     if not os.path.exists(file_location + '/tagged'):
         os.makedirs(file_location + '/tagged')
     folder = file_location + '/tagged'
-    for image in vott_json["taggedImages"]:
-        if (blob_storage.exists(config.get("storage_container"), image)):
-            blob_storage.get_blob_to_path(config.get("storage_container"),image, "{0}/{1}".format(folder, image))
+    for image in vott_json["taggedImageURLs"]:
+        filename = image
+        location = vott_json["taggedImageURLs"][image]
+        extension = location.split('.')[-1]
+        with urllib.request.urlopen(location) as response, open(folder + '/' + str(filename) + '.' + extension, 'wb') as out_file:
+            data = response.read() # a `bytes` object
+            out_file.write(data)
 
     # Download totag images into totag folder
     if not os.path.exists(file_location + '/totag'):
@@ -81,13 +82,14 @@ def download_vott_json(config, num_images):
         tags = data['vottJson']['frames'][item]
         array_tags = []
         for tag in tags:
-            tagdata = TagData(data['imageUrls'][index], item, tag['tags'], tag['x1'], tag['x2'], tag['y1'], tag['y2'], tag['height'], tag['width'])
+            tagdata = TagData(item, tag['tags'], tag['x1'], tag['x2'], tag['y1'], tag['y2'], tag['height'], tag['width'])
             array_tags.append(tagdata)
         vott_json[item] = array_tags
         index += 1
     return {
         "taggedImages": vott_json,
-        "toTagImageInfo": data["toTagImageInfo"]
+        "toTagImageInfo": data["toTagImageInfo"],
+        "taggedImageURLs": data["imageUrls"]
     }
 
 
@@ -119,7 +121,6 @@ def convert_to_csv(vott_json, file_location):
 def get_image_name_from_url(image_url):
     s = image_url.split('/')
     return s[len(s)-1]
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

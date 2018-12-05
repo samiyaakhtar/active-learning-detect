@@ -208,6 +208,41 @@ class ImageTagDataAccess(object):
             conn.close()
         return list(images_info)
 
+    
+    def get_image_tags_for_image_ids(self, image_ids):
+        image_id_to_vott_tags = {}
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                ids = ''
+                for id in image_ids:
+                    ids += str(id) + ','
+                ids = ids[:-1]
+                query = ("SELECT image_tags.imagetagid, image_info.imageid, x_min, x_max, y_min, y_max, "
+                         "classification_info.classificationname, image_info.height, image_info.width "
+                            "FROM image_tags "
+                                "inner join tags_classification on image_tags.imagetagid = tags_classification.imagetagid "
+                                "inner join classification_info on tags_classification.classificationid = classification_info.classificationid "
+                                "inner join image_info on image_info.imageid = image_tags.imageid "
+                            "WHERE image_tags.imageid IN ({0});")
+                cursor.execute(query.format(ids,))
+
+                logging.debug("Got image tags back for image_id={}".format(image_ids))
+                tag_id_to_vott_tags = self.__build_id_to_VottImageTag(cursor)
+                for vott_tag in tag_id_to_vott_tags.values():
+                    if vott_tag.image_id not in image_id_to_vott_tags:
+                        image_id_to_vott_tags[vott_tag.image_id] = []
+                    image_id_to_vott_tags[vott_tag.image_id].append(vott_tag)
+            finally:
+                cursor.close()
+        except Exception as e:
+            logging.error("An error occurred getting image tags for image ids = {0}: {1}".format(image_ids, e))
+            raise
+        finally:
+            conn.close()
+        return image_id_to_vott_tags
+
 
     def get_image_tags(self, image_id):
         if type(image_id) is not int:

@@ -38,23 +38,19 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
             # Get ready to tag images
             ready_to_tag_images = data_access.get_ready_to_tag_images(image_count, user_id)
-            ready_to_tag_image_urls = list(ready_to_tag_images.values())
 
             image_infos = data_access.get_image_info_for_image_ids(list(ready_to_tag_images.keys()))
 
             # Get tag complete images
             image_id_to_urls = data_access.get_tag_complete_images(user_id)
-            image_urls = list(image_id_to_urls.values())
-
-            image_id_to_image_tags = {}
-            for image_id in image_id_to_urls.keys():
-                image_id_to_image_tags[image_id] = data_access.get_image_tags(image_id)
+            obj = list(image_id_to_urls.keys())
+            image_id_to_image_tags = data_access.get_image_tags_for_image_ids(obj)
 
             existing_classifications_list = data_access.get_existing_classifications()
 
             vott_json = create_starting_vott_json(image_id_to_urls, image_id_to_image_tags, existing_classifications_list)
 
-            return_body_json = {"imageUrls": image_urls,
+            return_body_json = {"imageUrls": image_id_to_urls,
                                 "vottJson": vott_json,
                                 "toTagImageInfo": image_infos}
 
