@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 
 # Check if we are in a virutal env (needed to deploy functions, database)
 if [ -z "$VIRTUAL_ENV" ]; then
@@ -21,33 +20,53 @@ fi
 
 # Check if any of the args are empty
 if [ -z "$1" ]; then
-    echo "Usage: 'sh $0 (Configuration file)'"
-    exit 1
+    echo "Usage: 'sh $0 (Configuration file)' or SET Environment Variables"
 fi
 
-# Is the config file present?
-if [ ! -e "$1" ]; then
+# If arg exists but the config file isn't present?
+if [ -n "$1" ] && [ ! -e "$1" ]; then
     echo "Configuration file does not exist."
     exit 1
+elif [ -e "$1" ]; then
+    # Read configuration
+    . $1
 fi
 
-# Read configuration
-. $1
+#Verify env vars are set
+[ -z "$RESOURCE_GROUP" ] && echo "Need to set RESOURCE_GROUP" && exit 1;
+[ -z "$RESOURCE_LOCATION" ] && echo "Need to set RESOURCE_LOCATION" && exit 1;
+[ -z "$PROJECT_STORAGE_ACCOUNT" ] && echo "Need to set PROJECT_STORAGE_ACCOUNT" && exit 1;
+[ -z "$PROJECT_STORAGE_TEMP_CONTAINER" ] && echo "Need to set PROJECT_STORAGE_TEMP_CONTAINER" && exit 1;
+[ -z "$PROJECT_STORAGE_PERM_CONTAINER" ] && echo "Need to set PROJECT_STORAGE_PERM_CONTAINER" && exit 1;
+[ -z "$DATABASE_NAME" ] && echo "Need to set DATABASE_NAME" && exit 1;
+[ -z "$DATABASE_SERVER_NAME" ] && echo "Need to set DATABASE_SERVER_NAME" && exit 1;
+[ -z "$DATABASE_USERNAME" ] && echo "Need to set DATABASE_USERNAME" && exit 1;
+[ -z "$DATABASE_PASSWORD" ] && echo "Need to set DATABASE_PASSWORD" && exit 1;
+[ -z "$APPINSIGHTS_NAME" ] && echo "Need to set APPINSIGHTS_NAME" && exit 1;
+[ -z "$FUNCTION_STORAGE_ACCOUNT" ] && echo "Need to set FUNCTION_STORAGE_ACCOUNT" && exit 1;
+[ -z "$FUNCTION_APP_NAME" ] && echo "Need to set FUNCTION_APP_NAME" && exit 1;
 
 # Install reuired python modules
 pip install -r ../../requirements.txt
 
+#Conditional Postgres Server deployment to speed up scheduled automated deploys
+DEPLOY_POSTGRES_SERVER=${DEPLOY_POSTGRES:="true"}
+
 # Setup database
 DATABASE_USERNAME_AT_HOST="$DATABASE_USERNAME@$DATABASE_SERVER_NAME"
-. ./Deploy-Postgres-DB.sh $RESOURCE_GROUP $DATABASE_SERVER_NAME "$DATABASE_USERNAME" $DATABASE_PASSWORD
-if [ "$?" -ne 0 ]; then
-    echo "Unable to setup database"
-    exit 1
+if $DEPLOY_POSTGRES_SERVER; then
+    . ./Deploy-Postgres-DB.sh $RESOURCE_GROUP $DATABASE_SERVER_NAME "$DATABASE_USERNAME" $DATABASE_PASSWORD
+    if [ "$?" -ne 0 ]; then
+        echo "Unable to setup database"
+        exit 1
+    fi
+else
+    echo "Skipping deploy of Postgres SQL server"
 fi
 
 # Setup database schema
 DB_HOST_FULL_NAME="$DATABASE_SERVER_NAME"".postgres.database.azure.com"
-(cd ../../db && export DB_HOST=$DB_HOST_FULL_NAME && export DB_USER="$DATABASE_USERNAME_AT_HOST" && export DB_PASS=$DATABASE_PASSWORD && ./install-db-resources.py $DATABASE_NAME)
+(cd ../../db && export DB_HOST=$DB_HOST_FULL_NAME && export DB_USER="$DATABASE_USERNAME_AT_HOST" && export DB_PASS=$DATABASE_PASSWORD && ./install-db-resources.py --overwrite $DATABASE_NAME)
 
 # Setup app insights
 . ./Deploy-AppInsights.sh $RESOURCE_GROUP $APPINSIGHTS_NAME
