@@ -16,7 +16,6 @@ class ImageTagState(IntEnum):
     INCOMPLETE_TAG = 4
     ABANDONED = 5
 
-
 # An entity class for a VOTT image
 class ImageInfo(object):
     def __init__(self, image_name, image_location, height, width):
@@ -130,32 +129,10 @@ class ImageTagDataAccess(object):
             finally: conn.close()
         return url_to_image_id_map
 
-    def get_tag_complete_images(self, user_id):
-        tag_complete_images = {}
-        try:
-            conn = self._db_provider.get_connection()
-            try:
-                cursor = conn.cursor()
-                query = ("SELECT b.ImageId, b.ImageLocation, a.TagStateId FROM Image_Tagging_State a "
-                        "JOIN Image_Info b ON a.ImageId = b.ImageId WHERE a.TagStateId = {0} order by "
-                        "a.createddtim")
-                cursor.execute(query.format(ImageTagState.COMPLETED_TAG))
-                for row in cursor:
-                    logging.debug('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
-                    tag_complete_images[row[0]] = str(row[1])
-            finally:
-                cursor.close()
-        except Exception as e:
-            logging.error("An errors occured getting images: {0}".format(e))
-            raise
-        finally:
-            conn.close()
-        return tag_complete_images
-
-    def get_ready_to_tag_images(self, number_of_images, user_id):
-        if number_of_images <= 0:
+    def get_images_by_tag_status(self, user_id, tag_status, limit):
+        if limit <= 0:
             raise ArgumentException("Parameter must be greater than zero")
-        ready_to_tag_images = {}
+        images_by_tag_status = {}
         try:
             conn = self._db_provider.get_connection()
             try:
@@ -163,10 +140,10 @@ class ImageTagDataAccess(object):
                 query = ("SELECT b.ImageId, b.ImageLocation, a.TagStateId FROM Image_Tagging_State a "
                         "JOIN Image_Info b ON a.ImageId = b.ImageId WHERE a.TagStateId = {1} order by "
                         "a.createddtim DESC limit {0}")
-                cursor.execute(query.format(number_of_images, ImageTagState.READY_TO_TAG))
+                cursor.execute(query.format(limit, tag_status))
                 for row in cursor:
                     logging.debug('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
-                    ready_to_tag_images[row[0]] = str(row[1])
+                    images_by_tag_status[row[0]] = str(row[1])
             finally:
                 cursor.close()
         except Exception as e:
@@ -174,9 +151,9 @@ class ImageTagDataAccess(object):
             raise
         finally:
             conn.close()
-        return ready_to_tag_images
-    
+        return images_by_tag_status
 
+    
     def get_image_info_for_image_ids(self, image_ids):
         try:
             conn = self._db_provider.get_connection()
