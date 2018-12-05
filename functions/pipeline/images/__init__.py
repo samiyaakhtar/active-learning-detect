@@ -31,6 +31,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             headers=headers,
             body=json.dumps({"error": "image count not specified"})
         )
+    elif not tag_status:
+        return func.HttpResponse(
+            status_code=400,
+            headers=headers,
+            body=json.dumps({"error": "tag status not specified"})
+        )
     else:
         try:
             # DB configuration
