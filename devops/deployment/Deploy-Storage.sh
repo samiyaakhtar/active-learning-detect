@@ -20,6 +20,18 @@ if [ -z "$STORAGE_NAME" ]; then
     exit 1
 fi
 
+#A conditional to choose whether or not to redploy the storage account if it already exists
+REDEPLOY_AZURE_STORAGE=${REDEPLOY_STORAGE:="true"}
+if $REDEPLOY_AZURE_STORAGE; then
+    #First see if the storage account exists. 
+    storage_query_result=$(az storage account list -g $RESOURCE_GROUP --query "[?name=='$PROJECT_STORAGE_ACCOUNT'].name")
+    if [[ $storage_query_result =~ $STORAGE_NAME ]];
+    then
+        echo "Storage account $STORAGE_NAME already exists. Removing..."
+        az storage account delete -g $RESOURCE_GROUP -n $STORAGE_NAME -y
+    fi
+fi
+
 echo "Creating Storage Account"
 
 az storage account create --resource-group $RESOURCE_GROUP --name $STORAGE_NAME --sku Standard_LRS

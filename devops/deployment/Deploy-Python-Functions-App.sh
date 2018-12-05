@@ -81,6 +81,7 @@ AppInsightsKey=$(az resource show -g $ResourceGroup -n $AppInsightsName --resour
 #Remove double quotes
 AppInsightsKey=$(sed -e 's/^"//' -e 's/"$//' <<<"$AppInsightsKey")
 STORAGE_ACCOUNT_KEY=$(sed -e 's/^"//' -e 's/"$//' <<<"$STORAGE_ACCOUNT_KEY")
+STORAGE_CONNECTION_STRING=$(sed -e 's/^"//' -e 's/"$//' <<<"$STORAGE_CONNECTION_STRING")
 
 echo
 echo "Setting application setting on $FunctionAppName"
