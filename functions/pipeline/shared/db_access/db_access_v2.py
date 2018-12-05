@@ -38,10 +38,11 @@ class ImageTag(object):
 
 # Vott tags have image height & width data as well.
 class VottImageTag(ImageTag):
-    def __init__(self, image_id, x_min, x_max, y_min, y_max, classification_names, image_height, image_width):
+    def __init__(self, image_id, x_min, x_max, y_min, y_max, classification_names, image_height, image_width, image_location):
         super().__init__(image_id, x_min, x_max, y_min, y_max, classification_names)
         self.image_height = image_height
         self.image_width = image_width
+        self.image_location = image_location
 
 
 class ImageTagDataAccess(object):
@@ -197,7 +198,7 @@ class ImageTagDataAccess(object):
                     ids += str(id) + ','
                 ids = ids[:-1]
                 query = ("SELECT image_tags.imagetagid, image_info.imageid, x_min, x_max, y_min, y_max, "
-                         "classification_info.classificationname, image_info.height, image_info.width "
+                         "classification_info.classificationname, image_info.height, image_info.width, image_info.imagelocation "
                             "FROM image_tags "
                                 "inner join tags_classification on image_tags.imagetagid = tags_classification.imagetagid "
                                 "inner join classification_info on tags_classification.classificationid = classification_info.classificationid "
@@ -230,7 +231,7 @@ class ImageTagDataAccess(object):
             try:
                 cursor = conn.cursor()
                 query = ("SELECT image_tags.imagetagid, image_info.imageid, x_min, x_max, y_min, y_max, "
-                         "classification_info.classificationname, image_info.height, image_info.width "
+                         "classification_info.classificationname, image_info.height, image_info.width, image_info.imagelocation "
                             "FROM image_tags "
                                 "inner join tags_classification on image_tags.imagetagid = tags_classification.imagetagid "
                                 "inner join classification_info on tags_classification.classificationid = classification_info.classificationid "
@@ -267,7 +268,7 @@ class ImageTagDataAccess(object):
                                           [row[6].strip()], row[7], row[8]))
                     tag_id_to_VottImageTag[tag_id] = VottImageTag(row[1], float(row[2]), float(row[3]),
                                                                   float(row[4]), float(row[5]), [row[6].strip()],
-                                                                  row[7], row[8])
+                                                                  row[7], row[8], row[9])
         except Exception as e:
             logging.error("An error occurred building VottImageTag dict: {0}".format(e))
             raise

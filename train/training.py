@@ -11,98 +11,74 @@ import time
 
 CONFIG_PATH = os.environ.get('ALCONFIG', None)
 
-class TagData(object):
-    def __init__(self, name, tags, x1, x2, y1, y2, height, width):
-        self.tags = tags
-        self.x1 = x1 
-        self.x2 = x2
-        self.y1 = y1
-        self.y2 = y2
-        self.height = height
-        self.width = width
-        self.name = name
-
-
 def train(config, num_images):
-    # First, downloxad vott json for tagging complete images
-    vott_json = download_vott_json(config, num_images)
+
+    # First, downloxad data necessary for training
+    training_data = download_data_for_training(config, num_images)
 
     # Make sure directory is clean:
     file_location = Config.initialize_tagging_location(config)
 
     # Grab tagged and totag images from the blob storage
-    download_images(vott_json, str(file_location))
+    download_images(training_data["imageURLs"], str(file_location))
 
     # create csv file from this data
-    convert_to_csv(vott_json, str(file_location))
+    convert_to_csv(training_data, str(file_location))
 
 
-def download_images(vott_json, file_location):
+def download_images(imageURLs, file_location):
     print("Downloading images to " + file_location + ", this may take a few seconds...")
 
     # Download tagged images into tagged folder
-    if not os.path.exists(file_location + '/tagged'):
-        os.makedirs(file_location + '/tagged')
-    folder = file_location + '/tagged'
-    for image in vott_json["taggedImageURLs"]:
-        filename = image
-        location = vott_json["taggedImageURLs"][image]
-        extension = location.split('.')[-1]
-        with urllib.request.urlopen(location) as response, open(folder + '/' + str(filename) + '.' + extension, 'wb') as out_file:
-            data = response.read() # a `bytes` object
-            out_file.write(data)
-
-    # Download totag images into totag folder
-    if not os.path.exists(file_location + '/totag'):
-        os.makedirs(file_location + '/totag')
-    folder = file_location + '/totag'
-    for image in vott_json["toTagImageInfo"]:
-        filename = image['id']
-        extension = image['location'].split('.')[-1]
-        with urllib.request.urlopen(image['location']) as response, open(folder + '/' + str(filename) + '.' + extension, 'wb') as out_file:
+    if not os.path.exists(file_location + '/AllImages'):
+        os.makedirs(file_location + '/AllImages')
+    folder = file_location + '/AllImages'
+    for image in imageURLs:
+        filename = get_image_name_from_url(image)
+        location = image
+        # extension = location.split('.')[-1]
+        with urllib.request.urlopen(location) as response, open(folder + '/' + str(filename), 'wb') as out_file:
             data = response.read() # a `bytes` object
             out_file.write(data)
     
-    print("Downloaded images into " + file_location + "/tagged/ and " + file_location + "/totag/")
+    print("Downloaded images into " + file_location + "/AllImages/")
 
 
-def download_vott_json(config, num_images):
+def download_data_for_training(config, num_images):
+    print("Downloading data for training, this may take a few moments...")
+    # Download n images that are ready to tag
     query = {
         "userName": config.get('tagging_user'),
-        "imageCount": num_images
+        "imageCount": num_images,
+        "tagStatus": 1
     }
-    functions_url = config.get('url') + '/api/taggedimages'
-    print("Downloading data for training, this may take a few minutes...")
-    response = requests.get(functions_url, params=query)
-    data = response.json()
+    url = config.get('url') + '/api/images'
+    response = requests.get(url, params=query)
+    to_tag_image_info = response.json()
+    image_urls_to_download = [info['location'] for info in to_tag_image_info]
 
-    vott_json = {}
-    index = 0
-    for item in data['vottJson']['frames']:
-        tags = data['vottJson']['frames'][item]
-        array_tags = []
-        for tag in tags:
-            tagdata = TagData(item, tag['tags'], tag['x1'], tag['x2'], tag['y1'], tag['y2'], tag['height'], tag['width'])
-            array_tags.append(tagdata)
-        vott_json[item] = array_tags
-        index += 1
-    return {
-        "taggedImages": vott_json,
-        "toTagImageInfo": data["toTagImageInfo"],
-        "taggedImageURLs": data["imageUrls"]
-    }
+    # Download upto 200 images that have been tagged, for training
+    query['tagStatus'] = 3
+    query['imageCount'] = 200
+    url = config.get('url') + '/api/tags'
+    response = requests.get(url, params=query)
+    tagged_image_data = response.json()
+    image_urls_to_download.extend([tag[0]["location"] for tag in tagged_image_data["frames"].values()])
+    return { "imageURLs": image_urls_to_download,
+             "toTagImageInfo": to_tag_image_info,
+             "taggedImageData": tagged_image_data }
 
 
-def convert_to_csv(vott_json, file_location):
+def convert_to_csv(training_data, file_location):
     # Convert tagged images into their own csv
     with open(file_location + '/tagged.csv', 'w') as csvfile:
         filewriter = csv.writer(csvfile, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
         filewriter.writerow(['filename','class','xmin','xmax','ymin','ymax','height','width'])
-        for item in vott_json["taggedImages"]:
-            for tags in vott_json["taggedImages"][item]:
-                for tag in tags.tags:
-                    data = [tags.name, tag, tags.x1, tags.x2, tags.y1, tags.y2, tags.height, tags.width]
+        for item in training_data["taggedImageData"]["frames"]:
+            for tags in training_data["taggedImageData"]["frames"][item]:
+                for tag in training_data["taggedImageData"]["frames"][item][0]["tags"]:
+                    data = [item, tag, tags['x1'], tags['x2'], tags['y1'], tags['y2'], tags['height'], tags['width']]
                     filewriter.writerow(data)
 
     # Convert totag images into their own csv
@@ -110,7 +86,7 @@ def convert_to_csv(vott_json, file_location):
         filewriter = csv.writer(csvfile, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
         filewriter.writerow(['filename','class','xmin','xmax','ymin','ymax','height','width','folder','box_confidence','image_confidence'])
-        for item in vott_json["toTagImageInfo"]:
+        for item in training_data["toTagImageInfo"]:
             filename = get_image_name_from_url(item['location'])
             data = [filename, 'NULL', 0, 0, 0, 0, item['height'], item['width'], '', 0, 0]
             filewriter.writerow(data)
@@ -121,6 +97,7 @@ def convert_to_csv(vott_json, file_location):
 def get_image_name_from_url(image_url):
     s = image_url.split('/')
     return s[len(s)-1]
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
