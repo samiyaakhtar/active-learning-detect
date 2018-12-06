@@ -40,7 +40,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 image_count = int(image_count)
 
             # Get tag data by status
-            image_id_to_urls = data_access.get_images_by_tag_status(user_id, tag_status, image_count)
+            image_id_to_urls = data_access.get_images_by_tag_status(user_id, tag_status.split(','), image_count)
             image_id_to_image_tags = data_access.get_image_tags_for_image_ids(list(image_id_to_urls.keys()))
 
             existing_classifications_list = data_access.get_existing_classifications()

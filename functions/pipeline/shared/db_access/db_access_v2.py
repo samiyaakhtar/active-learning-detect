@@ -136,12 +136,16 @@ class ImageTagDataAccess(object):
             conn = self._db_provider.get_connection()
             try:
                 cursor = conn.cursor()
+                tags = ''
+                for id in tag_status:
+                    tags += str(id) + ','
+                tags = tags[:-1]
                 query = ("SELECT b.ImageId, b.ImageLocation, a.TagStateId FROM Image_Tagging_State a "
                         "JOIN Image_Info b ON a.ImageId = b.ImageId WHERE a.TagStateId IN ({0}) order by "
                         "a.createddtim DESC")
                 if limit:
                     query += " limit {1}"
-                cursor.execute(query.format(tag_status, limit))
+                cursor.execute(query.format(tags, limit))
                 for row in cursor:
                     logging.debug('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
                     images_by_tag_status[row[0]] = str(row[1])

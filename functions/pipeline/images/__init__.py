@@ -11,9 +11,10 @@ from ..shared.db_access import ImageTagDataAccess, ImageTagState
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
-    image_count = int(req.params.get('imageCount'))
+    image_count = req.params.get('imageCount')
     user_name = req.params.get('userName')
     tag_status = req.params.get('tagStatus')
+    image_ids = req.params.get('imageId')
 
     # setup response object
     headers = {
@@ -25,17 +26,17 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             headers=headers,
             body=json.dumps({"error": "invalid userName given or omitted"})
         )
-    elif not image_count:
+    elif not image_count and tag_status:
         return func.HttpResponse(
             status_code=400,
             headers=headers,
-            body=json.dumps({"error": "image count not specified"})
+            body=json.dumps({"error": "image count needs to be specified if tag status is specified"})
         )
-    elif not tag_status:
+    elif not tag_status and not image_ids:
         return func.HttpResponse(
             status_code=400,
             headers=headers,
-            body=json.dumps({"error": "tag status not specified"})
+            body=json.dumps({"error": "either of tag status or images ids needs to be specified"})
         )
     else:
         try:
@@ -44,11 +45,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             user_id = data_access.create_user(user_name)
 
             # Get images info
-            ready_to_tag_images = data_access.get_images_by_tag_status(user_id, tag_status, image_count)
-
-            image_infos = data_access.get_image_info_for_image_ids(list(ready_to_tag_images.keys()))
-
-            # return_body_json = { image_infos }
+            if image_ids:
+                image_infos = data_access.get_image_info_for_image_ids(image_ids.split(','))
+            elif tag_status:
+                image_count = int(image_count)
+                images_by_tag_status = data_access.get_images_by_tag_status(user_id, tag_status, image_count)
+                image_infos = data_access.get_image_info_for_image_ids(list(images_by_tag_status.keys()))
 
             content = json.dumps(image_infos)
             return func.HttpResponse(
