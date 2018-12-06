@@ -9,7 +9,8 @@ def __build_tag_from_VottImageTag(image_tag):
         "y2": image_tag.y_max,
         "width": image_tag.image_width,
         "height": image_tag.image_height,
-        "tags": image_tag.classification_names
+        "tags": image_tag.classification_names,
+        "location": image_tag.image_location
     }
 
 

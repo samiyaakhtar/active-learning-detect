@@ -16,7 +16,6 @@ class ImageTagState(IntEnum):
     INCOMPLETE_TAG = 4
     ABANDONED = 5
 
-
 # An entity class for a VOTT image
 class ImageInfo(object):
     def __init__(self, image_name, image_location, height, width):
@@ -39,10 +38,11 @@ class ImageTag(object):
 
 # Vott tags have image height & width data as well.
 class VottImageTag(ImageTag):
-    def __init__(self, image_id, x_min, x_max, y_min, y_max, classification_names, image_height, image_width):
+    def __init__(self, image_id, x_min, x_max, y_min, y_max, classification_names, image_height, image_width, image_location):
         super().__init__(image_id, x_min, x_max, y_min, y_max, classification_names)
         self.image_height = image_height
         self.image_width = image_width
+        self.image_location = image_location
 
 
 class ImageTagDataAccess(object):
@@ -130,11 +130,10 @@ class ImageTagDataAccess(object):
             finally: conn.close()
         return url_to_image_id_map
 
-    def get_tag_complete_images(self, number_of_images, user_id):
-        if number_of_images <= 0:
+    def get_images_by_tag_status(self, user_id, tag_status, limit):
+        if limit <= 0:
             raise ArgumentException("Parameter must be greater than zero")
-
-        tag_complete_images = {}
+        images_by_tag_status = {}
         try:
             conn = self._db_provider.get_connection()
             try:
@@ -142,18 +141,86 @@ class ImageTagDataAccess(object):
                 query = ("SELECT b.ImageId, b.ImageLocation, a.TagStateId FROM Image_Tagging_State a "
                         "JOIN Image_Info b ON a.ImageId = b.ImageId WHERE a.TagStateId = {1} order by "
                         "a.createddtim DESC limit {0}")
-                cursor.execute(query.format(number_of_images, ImageTagState.COMPLETED_TAG))
+                cursor.execute(query.format(limit, tag_status))
                 for row in cursor:
                     logging.debug('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
-                    tag_complete_images[row[0]] = str(row[1])
+                    images_by_tag_status[row[0]] = str(row[1])
             finally:
                 cursor.close()
         except Exception as e:
-            logging.error("An errors occured getting images: {0}".format(e))
+            logging.error("An errors occured getting ready to tag images: {0}".format(e))
             raise
         finally:
             conn.close()
-        return tag_complete_images
+        return images_by_tag_status
+
+    
+    def get_image_info_for_image_ids(self, image_ids):
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                ids = ''
+                for id in image_ids:
+                    ids += str(id) + ','
+                ids = ids[:-1]
+                query = ("select imageid, originalimagename, imagelocation, height, width, createdbyuser from image_info where imageid IN ({0});")
+                cursor.execute(query.format(ids))
+                logging.debug("Got image info back for image_id={}".format(image_ids))
+
+                images_info = []
+                for row in cursor:
+                    info = {}
+                    info['height'] = row[3]
+                    info['width'] = row[4]
+                    info['name'] = row[1]
+                    info['location'] = row[2]
+                    info['id'] = row[0]
+                    images_info.append(info)
+            finally:
+                cursor.close()
+        except Exception as e:
+            logging.error("An error occurred getting image tags {0}".format(e))
+            raise
+        finally:
+            conn.close()
+        return list(images_info)
+
+    
+    def get_image_tags_for_image_ids(self, image_ids):
+        image_id_to_vott_tags = {}
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                ids = ''
+                for id in image_ids:
+                    ids += str(id) + ','
+                ids = ids[:-1]
+                query = ("SELECT image_tags.imagetagid, image_info.imageid, x_min, x_max, y_min, y_max, "
+                         "classification_info.classificationname, image_info.height, image_info.width, image_info.imagelocation "
+                            "FROM image_tags "
+                                "inner join tags_classification on image_tags.imagetagid = tags_classification.imagetagid "
+                                "inner join classification_info on tags_classification.classificationid = classification_info.classificationid "
+                                "inner join image_info on image_info.imageid = image_tags.imageid "
+                            "WHERE image_tags.imageid IN ({0});")
+                cursor.execute(query.format(ids,))
+
+                logging.debug("Got image tags back for image_id={}".format(image_ids))
+                tag_id_to_vott_tags = self.__build_id_to_VottImageTag(cursor)
+                for vott_tag in tag_id_to_vott_tags.values():
+                    if vott_tag.image_id not in image_id_to_vott_tags:
+                        image_id_to_vott_tags[vott_tag.image_id] = []
+                    image_id_to_vott_tags[vott_tag.image_id].append(vott_tag)
+            finally:
+                cursor.close()
+        except Exception as e:
+            logging.error("An error occurred getting image tags for image ids = {0}: {1}".format(image_ids, e))
+            raise
+        finally:
+            conn.close()
+        return image_id_to_vott_tags
+
 
     def get_image_tags(self, image_id):
         if type(image_id) is not int:
@@ -164,7 +231,7 @@ class ImageTagDataAccess(object):
             try:
                 cursor = conn.cursor()
                 query = ("SELECT image_tags.imagetagid, image_info.imageid, x_min, x_max, y_min, y_max, "
-                         "classification_info.classificationname, image_info.height, image_info.width "
+                         "classification_info.classificationname, image_info.height, image_info.width, image_info.imagelocation "
                             "FROM image_tags "
                                 "inner join tags_classification on image_tags.imagetagid = tags_classification.imagetagid "
                                 "inner join classification_info on tags_classification.classificationid = classification_info.classificationid "
@@ -201,7 +268,7 @@ class ImageTagDataAccess(object):
                                           [row[6].strip()], row[7], row[8]))
                     tag_id_to_VottImageTag[tag_id] = VottImageTag(row[1], float(row[2]), float(row[3]),
                                                                   float(row[4]), float(row[5]), [row[6].strip()],
-                                                                  row[7], row[8])
+                                                                  row[7], row[8], row[9])
         except Exception as e:
             logging.error("An error occurred building VottImageTag dict: {0}".format(e))
             raise
