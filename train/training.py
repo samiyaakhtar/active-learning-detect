@@ -20,28 +20,27 @@ def train(config, num_images):
     file_location = Config.initialize_tagging_location(config)
 
     # Grab tagged and totag images from the blob storage
-    download_images(training_data["imageURLs"], str(file_location))
+    download_images(training_data["imageURLs"], config.get('tagging_image_dir'))
 
     # create csv file from this data
     convert_to_csv(training_data, str(file_location))
 
 
 def download_images(imageURLs, file_location):
+    file_location = os.path.expanduser(file_location)
     print("Downloading images to " + file_location + ", this may take a few seconds...")
-
     # Download tagged images into tagged folder
-    if not os.path.exists(file_location + '/AllImages'):
-        os.makedirs(file_location + '/AllImages')
-    folder = file_location + '/AllImages'
+    if not os.path.exists(file_location):
+        os.makedirs(file_location)
     for image in imageURLs:
         filename = get_image_name_from_url(image)
         location = image
         # extension = location.split('.')[-1]
-        with urllib.request.urlopen(location) as response, open(folder + '/' + str(filename), 'wb') as out_file:
+        with urllib.request.urlopen(location) as response, open(file_location + '/' + str(filename), 'wb') as out_file:
             data = response.read() # a `bytes` object
             out_file.write(data)
     
-    print("Downloaded images into " + file_location + "/AllImages/")
+    print("Downloaded images into " + file_location)
 
 
 def download_data_for_training(config, num_images):
@@ -60,7 +59,7 @@ def download_data_for_training(config, num_images):
     # Download upto 200 images that have been tagged, for training
     query['tagStatus'] = 3
     query['imageCount'] = 200
-    url = config.get('url') + '/api/tags'
+    url = config.get('url') + '/api/labels'
     response = requests.get(url, params=query)
     tagged_image_data = response.json()
     image_urls_to_download.extend([tag[0]["location"] for tag in tagged_image_data["frames"].values()])
@@ -70,6 +69,7 @@ def download_data_for_training(config, num_images):
 
 
 def convert_to_csv(training_data, file_location):
+    file_location = os.path.expanduser(file_location)
     # Convert tagged images into their own csv
     with open(file_location + '/tagged.csv', 'w') as csvfile:
         filewriter = csv.writer(csvfile, delimiter=',',

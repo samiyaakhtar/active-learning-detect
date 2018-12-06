@@ -16,6 +16,7 @@ STORAGE_CONTAINER = 'STORAGE_CONTAINER'
 TAGGING_SECTION = 'TAGGING'
 TAGGING_LOCATION_KEY = 'TAGGING_LOCATION'
 TAGGING_USER_KEY = 'TAGGING_USER'
+TAGGING_IMAGE_DIR_KEY='TAGGING_IMAGE_DIR'
 
 class Config():
     @staticmethod
@@ -45,11 +46,12 @@ class Config():
     def tagging_config_section(tagging_config_section):
         tagging_location_value = tagging_config_section.get(TAGGING_LOCATION_KEY)
         tagging_user_value = tagging_config_section.get(TAGGING_USER_KEY)
+        tagging_image_dir = tagging_config_section.get(TAGGING_IMAGE_DIR_KEY)
 
         if not tagging_location_value or not tagging_user_value:
             raise MissingConfigException()
 
-        return tagging_location_value, tagging_user_value
+        return tagging_location_value, tagging_user_value, tagging_image_dir
         
     @staticmethod
     def functions_config_section(functions_config_section):
@@ -82,7 +84,7 @@ class Config():
             parser[STORAGE_SECTION]
         )
 
-        tagging_location, tagging_user = Config.tagging_config_section(parser[TAGGING_SECTION])
+        tagging_location, tagging_user, tagging_image_dir = Config.tagging_config_section(parser[TAGGING_SECTION])
 
         return {
             "key": functions_key,
@@ -91,7 +93,8 @@ class Config():
             "storage_key": storage_key,
             "storage_container": storage_container,
             "tagging_location": tagging_location,
-            "tagging_user": tagging_user
+            "tagging_user": tagging_user,
+            "tagging_image_dir": tagging_image_dir
         }
 
     @staticmethod
@@ -100,6 +103,7 @@ class Config():
             raise MissingConfigException()
 
         parser = configparser.ConfigParser()
+        parser._interpolation = configparser.ExtendedInterpolation()
         parser.read(config_path)
         return Config.read_config_with_parsed_config(parser)
 
