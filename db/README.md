@@ -9,7 +9,13 @@ The _Deploy-Postgres-DB_ shell script will deploy a [PostgreSQL server in Azure]
 Once the above is ready run the command below by replacing the 3 arguments 
 
 ```sh
-$ sh Deploy-Postgres-DB.sh RESOURCE_GROUP_NAME POSTGRES_SERVER_NAME POSTGRES_USER
+$ sh ../devops/deployment/Deploy-Postgres-DB.sh RESOURCE_GROUP_NAME POSTGRES_SERVER_NAME POSTGRES_USER
+```
+
+By default PostgreSQL server on Azure will enforce SSL connections. To disable them on deployment set the following environment variable prior to deployment:
+
+```sh
+$ export DISABLE_SSL_POSTGRES=true
 ```
 
 ## Deploying a PostgreSQL database and installing resources

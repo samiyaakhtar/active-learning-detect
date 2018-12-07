@@ -72,3 +72,14 @@ az postgres server firewall-rule create \
     --name "AzureServices_$RuleDate" \
     --start-ip-address "0.0.0.0" \
     --end-ip-address "0.0.0.0"    
+
+SSL_POSTGRES=${DISABLE_SSL_POSTGRES:="false"}
+if $SSL_POSTGRES; then
+    echo
+    echo "WARNING: Disabling SSL enforcement on Postgres host."
+    echo
+    az postgres server update \
+        --resource-group $ResourceGroup \
+        --server-name $ServerName \ 
+        --ssl-enforcement Disabled
+fi
