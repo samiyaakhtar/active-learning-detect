@@ -131,17 +131,21 @@ class ImageTagDataAccess(object):
         return url_to_image_id_map
 
     def get_images_by_tag_status(self, user_id, tag_status, limit):
-        if limit <= 0:
-            raise ArgumentException("Parameter must be greater than zero")
         images_by_tag_status = {}
         try:
             conn = self._db_provider.get_connection()
             try:
                 cursor = conn.cursor()
+                tags = ''
+                for id in tag_status:
+                    tags += str(id) + ','
+                tags = tags[:-1]
                 query = ("SELECT b.ImageId, b.ImageLocation, a.TagStateId FROM Image_Tagging_State a "
-                        "JOIN Image_Info b ON a.ImageId = b.ImageId WHERE a.TagStateId = {1} order by "
-                        "a.createddtim DESC limit {0}")
-                cursor.execute(query.format(limit, tag_status))
+                        "JOIN Image_Info b ON a.ImageId = b.ImageId WHERE a.TagStateId IN ({0}) order by "
+                        "a.createddtim DESC")
+                if limit:
+                    query += " limit {1}"
+                cursor.execute(query.format(tags, limit))
                 for row in cursor:
                     logging.debug('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
                     images_by_tag_status[row[0]] = str(row[1])
