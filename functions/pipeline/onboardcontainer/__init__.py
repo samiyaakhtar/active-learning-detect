@@ -2,7 +2,9 @@ import os
 import logging
 import json
 import azure.functions as func
+from urlpath import URL
 from datetime import datetime, timedelta
+from ..shared.constants import ImageFileType
 
 from azure.storage.blob import BlockBlobService, BlobPermissions
 from azure.storage.queue import QueueService, QueueMessageFormat
@@ -58,33 +60,43 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         blob_list = []
 
         for blob_object in blob_service.list_blobs(storage_container):
-            logging.info("INFO: Building sas token for blob " + blob_object.name)
-            # create sas signature
-            sas_signature = blob_service.generate_blob_shared_access_signature(
-                storage_container,
-                blob_object.name,
-                BlobPermissions.READ,
-                datetime.utcnow() + timedelta(hours=1)
+            blob_url = URL(
+                blob_service.make_blob_url(
+                    storage_container,
+                    blob_object.name
+                )
             )
+            # Check for supported image types here.
+            if ImageFileType.is_supported_filetype(blob_url.suffix):
+                logging.debug("INFO: Building sas token for blob " + blob_object.name)
+                # create sas signature
+                sas_signature = blob_service.generate_blob_shared_access_signature(
+                    storage_container,
+                    blob_object.name,
+                    BlobPermissions.READ,
+                    datetime.utcnow() + timedelta(hours=1)
+                )
 
-            blob_url = blob_service.make_blob_url(
-                storage_container,
-                blob_object.name
-            )
+                logging.debug("INFO: have sas signature {}".format(sas_signature))
 
-            signed_url = blob_url + "?" + sas_signature
+                signed_url = blob_url.with_query(sas_signature)
 
-            blob_list.append(signed_url)
+                blob_list.append(signed_url.as_uri())
 
-            logging.info("INFO: Built signed url " + signed_url)
+                logging.debug("INFO: Built signed url: {}".format(signed_url))
 
-            msg_body = {
-                "imageUrl": signed_url,
-                "userName": user_name
-            }
+                msg_body = {
+                    "imageUrl": signed_url.as_uri(),
+                    "fileName": str(blob_url.name),
+                    "fileExtension": str(blob_url.suffix),
+                    "directoryComponents": __get_filepath_from_url(blob_url, storage_container),
+                    "userName": user_name
+                }
 
-            body_str = json.dumps(msg_body)
-            queue_service.put_message("onboardqueue", body_str)
+                body_str = json.dumps(msg_body)
+                queue_service.put_message("onboardqueue", body_str)
+            else:
+                logging.info("Blob object not supported. Object URL={}".format(blob_url.as_uri))
 
         return func.HttpResponse(
             status_code=200,
@@ -95,3 +107,20 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         logging.error("ERROR: Could not build blob object list. Exception: " + str(e))
         return func.HttpResponse("ERROR: Could not get list of blobs in storage_container={0}. Exception={1}".format(
             storage_container, e), status_code=500)
+
+
+def __get_filepath_from_url(blob_url: URL, storage_container):
+    blob_uri = blob_url.path
+    return __remove_postfix(__remove_prefix(blob_uri, '/' + storage_container), '/' + blob_url.name)
+
+
+def __remove_prefix(text, prefix):
+    if text.startswith(prefix):
+        return text[len(prefix):]
+    return text
+
+
+def __remove_postfix(text, postfix):
+    if not text.endswith(postfix):
+        return text
+    return text[:len(text)-len(postfix)]
