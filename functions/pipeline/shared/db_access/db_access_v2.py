@@ -35,6 +35,27 @@ class ImageTag(object):
         self.y_max = y_max
         self.classification_names = classification_names
 
+#This class doesn't have box and image confidence because they are human curated labels
+class AnnotatedLabel(object):
+    def __init__(self, image_id, classification_id, x_min, x_max, y_min, y_max):
+        self.image_id = image_id
+        self.x_min = x_min
+        self.x_max = x_max
+        self.y_min = y_min
+        self.y_max = y_max
+        self.classification_id = classification_id
+    
+
+class PredictionLabel(AnnotatedLabel):
+    def __init__(self, training_id, image_id, classification_id, x_min, x_max, y_min, y_max, 
+                image_height, image_width, box_confidence=0, image_confidence= 0):
+        super().__init__(image_id, classification_id, x_min, x_max, y_min, y_max)
+        self.training_id = training_id
+        self.image_height = image_height
+        self.image_width = image_width
+        self.box_confidence = box_confidence
+        self.image_confidence = image_confidence
+
 
 # Vott tags have image height & width data as well.
 class VottImageTag(ImageTag):
@@ -130,7 +151,7 @@ class ImageTagDataAccess(object):
             finally: conn.close()
         return url_to_image_id_map
 
-    def get_images_by_tag_status(self, user_id, tag_status, limit):
+    def get_images_by_tag_status(self, tag_status, limit=None):
         images_by_tag_status = {}
         try:
             conn = self._db_provider.get_connection()
@@ -226,7 +247,7 @@ class ImageTagDataAccess(object):
         return image_id_to_vott_tags
 
 
-    def get_image_tags(self, image_id):
+    def get_image_tags(self, image_id: int):
         if type(image_id) is not int:
             raise TypeError('image_id must be an integer')
 
@@ -262,7 +283,7 @@ class ImageTagDataAccess(object):
                 logging.debug(row)
                 tag_id = row[0]
                 if tag_id in tag_id_to_VottImageTag:
-                    logging.debug("Existing ImageTag found, appending classification {}", row[6])
+                    logging.debug("Existing ImageTag found, appending classification {0}".format(row[6]))
                     tag_id_to_VottImageTag[tag_id].classification_names.append(row[6].strip())
                 else:
                     logging.debug("No existing ImageTag found, creating new ImageTag: "
@@ -378,7 +399,7 @@ class ImageTagDataAccess(object):
                     for img_tag in list(list_of_tags):
                         query = ("with iti AS ( "
                                 "INSERT INTO image_tags (ImageId, X_Min,X_Max,Y_Min,Y_Max,CreatedByUser) "
-                                "VALUES ({0}, {1},{2},{3},{4},{5}) "
+                                "VALUES ({0},{1},{2},{3},{4},{5}) "
                                 "RETURNING ImageTagId), "
                                 "ci AS ( "
                                     "INSERT INTO classification_info (ClassificationName) "
@@ -397,6 +418,109 @@ class ImageTagDataAccess(object):
             logging.error("An errors occured updating tagged image: {0}".format(e))
             raise
         finally: conn.close()
+
+    def get_classification_map(self, class_names: set, user_id: int) -> dict:
+        class_to_id = {}
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                query = ("WITH sc AS ( "
+                        "SELECT classificationid, classificationname FROM classification_info "
+                        "WHERE classificationname in ({0})), "
+                        "data(class_name) AS (values {1}), "
+                        "ci AS ( "
+                            "INSERT INTO classification_info (ClassificationName) "
+                            "SELECT d.class_name FROM data d "
+                            "WHERE NOT EXISTS (select 1 FROM classification_info c WHERE c.classificationname = d.class_name) "
+                            "RETURNING classificationid,classificationname) "
+                        "SELECT classificationid,classificationname FROM ci  "
+                        "UNION ALL "
+                        "SELECT classificationid,classificationname FROM sc")
+                class_names_where = "'{0}'".format("', '".join(class_names))
+                class_names_value = ", ".join("('{0}')".format(class_name) for class_name in class_names)
+                query = query.format(class_names_where,class_names_value)
+                cursor.execute(query)
+                for row in cursor:
+                    logging.debug(row)
+                    class_to_id[row[1]] = int(row[0])
+            finally: cursor.close()
+        except Exception as e:
+            logging.error("An errors occured upserting classification names: {0}".format(e))
+            raise
+        finally: conn.close()
+        return class_to_id
+
+    def update_tagged_images_v2(self, annotated_labels: list, user_id: int):
+        if(not annotated_labels):
+            return
+
+        if type(user_id) is not int:
+            raise TypeError('user id must be an integer')
+
+        labels_length = len(annotated_labels)
+        all_image_ids = list(l.image_id for l in annotated_labels)
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                query = "INSERT INTO Annotated_Labels(ImageId,ClassificationId,X_Min,X_Max,Y_Min,Y_Max,CreatedByUser) VALUES "
+                #Build query so we can insert all rows at once
+                for i in range(labels_length):
+                    label = annotated_labels[i]
+                    query+="({0},{1},{2},{3},{4},{5},{6}) ".format(label.image_id,label.classification_id,
+                                                            label.x_min,label.x_max,label.y_min,label.y_max,user_id)
+                    if i != labels_length-1: query+=","
+                cursor.execute(query)
+                self._update_images(all_image_ids,ImageTagState.COMPLETED_TAG,user_id,conn)
+                conn.commit()
+            #logging.debug("Updated status for {0} images".format(len(all_image_ids)))
+            finally: cursor.close()
+        except Exception as e:
+            logging.error("An errors occured updating tagged image: {0}".format(e))
+            raise
+        finally: conn.close()
+    
+    def convert_to_annotated_label(self, image_tags: list, class_map: dict):
+        annotated_labels = []
+        for img_tag in image_tags:
+            for class_name in img_tag.classification_names:
+                annotated_labels.append(AnnotatedLabel(img_tag.image_id,class_map[class_name],
+                                        img_tag.x_min,img_tag.x_max,img_tag.y_min,img_tag.y_max))
+        return annotated_labels
+
+    def add_prediction_labels(self, prediction_labels: list, training_id: int):
+        if(not prediction_labels):
+            return
+
+        if type(training_id) is not int:
+            raise TypeError('training id must be an integer')
+
+        labels_length = len(prediction_labels)
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                query = "INSERT INTO Prediction_Labels(TrainingId,ImageId,ClassificationId,X_Min,X_Max,Y_Min,Y_Max,BoxConfidence,ImageConfidence) VALUES "
+                #Build query so we can insert all rows at once
+                for i in range(labels_length):
+                    label = prediction_labels[i]
+                    query+="({0},{1},{2},{3},{4},{5},{6},{7},{8}) ".format(training_id,label.image_id,label.classification_id,
+                                                                    label.x_min,label.x_max,label.y_min,label.y_max,
+                                                                    label.box_confidence,label.image_confidence)
+                    if i != labels_length-1: query+=","
+                cursor.execute(query)
+                #TODO: Update some sort of training status table?
+                #self._update_training_status(training_id,conn)
+                conn.commit()
+            # logging.debug('Inserted {0} predictions for training session {1}'.format(labels_length, training_id))
+            finally: cursor.close()
+        except Exception as e:
+            logging.error("An errors occured updating tagged image: {0}".format(e))
+            raise
+        finally: conn.close()
+
+
 
 class ArgumentException(Exception):
     pass
@@ -426,12 +550,27 @@ def main():
     list_of_image_infos = generate_test_image_infos(5)
     url_to_image_id_map = data_access.add_new_images(list_of_image_infos,user_id)
 
-    image_tags = generate_test_image_tags(list(url_to_image_id_map.values()),4,4)
-    data_access.update_tagged_images(image_tags,user_id)
+    image_ids = list(url_to_image_id_map.values())
+
+    image_tags = generate_test_image_tags(image_ids,4,4)
+
+    all_class_name_lists = (list(it.classification_names for it in image_tags))
+    unique_class_names = set(x for l in all_class_name_lists for x in l)
+    print(len(unique_class_names))
+
+    class_map = data_access.get_classification_map(unique_class_names,user_id)
+
+    annotated_labels = data_access.convert_to_annotated_label(image_tags,class_map)
+    data_access.update_tagged_images_v2(annotated_labels,user_id)
+
+    training_id = 1
+    prediction_labels = generate_test_prediction_labels(training_id,image_ids, class_map)
+
+    data_access.add_prediction_labels(prediction_labels,training_id)
+    #data_access.update_tagged_images(image_tags,user_id)
 
 
 TestClassifications = ("maine coon","german shephard","goldfinch","mackerel","african elephant","rattlesnake")
-
 
 def generate_test_image_infos(count):
     list_of_image_infos = []
@@ -455,6 +594,25 @@ def generate_test_image_tags(list_of_image_ids,max_tags_per_image,max_classifica
             image_tag = ImageTag(image_id,x_min,x_max,y_min,y_max,random.sample(TestClassifications,classifications_per_tag))
             list_of_image_tags.append(image_tag)
     return list_of_image_tags
+
+def generate_test_prediction_labels(training_id, list_of_image_ids,class_map: dict):
+    list_of_prediction_labels = []
+    for image_id in list(list_of_image_ids):
+        tags_per_image = random.randint(1,3)
+        for i in range(tags_per_image):
+            x_min = random.uniform(50,300)
+            x_max = random.uniform(x_min,300)
+            y_min = random.uniform(50,300)
+            y_max = random.uniform(y_min,300)         
+            image_conf = random.uniform(.5,1)
+            box_conf = random.uniform(image_conf,1)
+            class_name = random.choice(TestClassifications)
+            class_id = class_map[class_name]
+            prediction_label = PredictionLabel(training_id,image_id,class_id,
+                                x_min,x_max,y_min,y_max,random.randint(100,600),
+                                random.randint(100,600), box_conf,image_conf)
+            list_of_prediction_labels.append(prediction_label)
+    return list_of_prediction_labels
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))

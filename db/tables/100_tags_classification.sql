@@ -1,4 +1,4 @@
--- Set up table
+--TO DELETE
 CREATE TABLE Tags_Classification (
     ImageTagId integer REFERENCES Image_Tags(ImageTagId),
     ClassificationId integer REFERENCES Classification_Info(ClassificationId),
