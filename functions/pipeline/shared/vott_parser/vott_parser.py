@@ -36,9 +36,11 @@ def create_starting_vott_json(image_id_to_urls, image_id_to_image_tags, existing
     frame_to_tag_list_map = __build_frames_data(image_id_to_urls, image_id_to_image_tags)
 
     # "inputTags"
+    class_length = len(existing_classifications_list)
     classification_str = ""
-    for classification in existing_classifications_list:
-        classification_str += classification + ","
+    for i in range(class_length):
+        classification_str += existing_classifications_list[i]
+        if i != class_length-1: classification_str+=","
 
     return {
         "frames": frame_to_tag_list_map,

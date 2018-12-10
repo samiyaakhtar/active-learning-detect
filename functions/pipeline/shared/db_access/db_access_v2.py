@@ -44,7 +44,24 @@ class AnnotatedLabel(object):
         self.y_min = y_min
         self.y_max = y_max
         self.classification_id = classification_id
-    
+
+# TODO: Think about moving all this schemas to a separate file 
+class ImageLabel(object):
+    def __init__(self,image_id, imagelocation,image_height: int, image_width: int, labels: list, user_folder=None):
+        self.image_id = image_id
+        self.imagelocation = imagelocation
+        self.image_height = image_height
+        self.image_width = image_width
+        self.user_folder = user_folder
+        self.labels = labels
+
+class Tag(object):
+    def __init__(self,classificationname, x_min: float, x_max: float, y_min: float, y_max: float):
+        self.x_min = x_min
+        self.x_max = x_max
+        self.y_min = y_min
+        self.y_max = y_min
+        self.classificationname = classificationname
 
 class PredictionLabel(AnnotatedLabel):
     def __init__(self, training_id, image_id, classification_id, x_min, x_max, y_min, y_max, 
@@ -178,9 +195,11 @@ class ImageTagDataAccess(object):
         finally:
             conn.close()
         return images_by_tag_status
-
-    
+  
     def get_image_info_for_image_ids(self, image_ids):
+        if not image_ids:
+            return list()
+
         try:
             conn = self._db_provider.get_connection()
             try:
@@ -210,9 +229,11 @@ class ImageTagDataAccess(object):
         finally:
             conn.close()
         return list(images_info)
-
-    
+  
     def get_image_tags_for_image_ids(self, image_ids):
+        if not image_ids:
+            return dict()
+            
         image_id_to_vott_tags = {}
         try:
             conn = self._db_provider.get_connection()
@@ -245,7 +266,6 @@ class ImageTagDataAccess(object):
         finally:
             conn.close()
         return image_id_to_vott_tags
-
 
     def get_image_tags(self, image_id: int):
         if type(image_id) is not int:
@@ -520,7 +540,39 @@ class ImageTagDataAccess(object):
             raise
         finally: conn.close()
 
-
+    # In practice we won't be getting multiple class names per bounding box however
+    # VOTT supports this. If multple class names per boounding box is common we can get more 
+    # efficient with the nesting to avoid dupe bounding boxes per image
+    def get_labels(self):        
+        id_to_imagelabels = {}
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                query = ("SELECT d.imageid, d.imagelocation, d.height, d.width, "
+                         "c.classificationname, x_min, x_max, y_min, y_max "
+                            "FROM Annotated_Labels a "
+                                "inner join classification_info c on a.classificationid = c.classificationid "
+                                "inner join image_info d on d.imageid = a.imageid ")
+                cursor.execute(query)
+                for row in cursor:
+                    image_id = row[0]
+                    tag = Tag(row[4],float(row[5]),float(row[6]),float(row[7]),float(row[8]))
+                    if image_id in id_to_imagelabels:                  
+                        id_to_imagelabels[image_id].labels.append(tag)
+                    else:
+                        img_label = ImageLabel(image_id,row[1],row[2],row[3],[tag])
+                        id_to_imagelabels[image_id] = img_label
+                
+                logging.debug("Found labels for {0} images".format(len(id_to_imagelabels)))       
+            finally:
+                cursor.close()
+        except Exception as e:
+            logging.error("An error occurred getting labels: {0}".format(e))
+            raise
+        finally:
+            conn.close()
+        return list(id_to_imagelabels.values())
 
 class ArgumentException(Exception):
     pass
@@ -547,27 +599,35 @@ def main():
     user_id = data_access.create_user(getpass.getuser())
     logging.info("The user id for '{0}' is {1}".format(getpass.getuser(),user_id))
 
-    list_of_image_infos = generate_test_image_infos(5)
-    url_to_image_id_map = data_access.add_new_images(list_of_image_infos,user_id)
+    #img_labels = data_access.get_labels()
 
-    image_ids = list(url_to_image_id_map.values())
+    simulate_onboarding = True
+    if simulate_onboarding:
+        list_of_image_infos = generate_test_image_infos(5)
+        url_to_image_id_map = data_access.add_new_images(list_of_image_infos,user_id)
 
-    image_tags = generate_test_image_tags(image_ids,4,4)
+        image_ids = list(url_to_image_id_map.values())
+        #Skip extra stuff and just put the images to expected state for testing 
+        data_access._update_images(image_ids,ImageTagState.READY_TO_TAG, user_id,None)
 
-    all_class_name_lists = (list(it.classification_names for it in image_tags))
-    unique_class_names = set(x for l in all_class_name_lists for x in l)
-    print(len(unique_class_names))
+    simulate_tagging = False
+    if simulate_tagging:
+        image_tags = generate_test_image_tags(image_ids,4,4)
 
-    class_map = data_access.get_classification_map(unique_class_names,user_id)
+        all_class_name_lists = (list(it.classification_names for it in image_tags))
+        unique_class_names = set(x for l in all_class_name_lists for x in l)
+        print(len(unique_class_names))
 
-    annotated_labels = data_access.convert_to_annotated_label(image_tags,class_map)
-    data_access.update_tagged_images_v2(annotated_labels,user_id)
+        #What the Labels API will do when POST http action occurs
+        class_map = data_access.get_classification_map(unique_class_names,user_id)
+        annotated_labels = data_access.convert_to_annotated_label(image_tags,class_map)
+        data_access.update_tagged_images_v2(annotated_labels,user_id)
 
-    training_id = 1
-    prediction_labels = generate_test_prediction_labels(training_id,image_ids, class_map)
-
-    data_access.add_prediction_labels(prediction_labels,training_id)
-    #data_access.update_tagged_images(image_tags,user_id)
+    simulate_post_training = False
+    if simulate_post_training and simulate_tagging:
+        training_id = 1
+        prediction_labels = generate_test_prediction_labels(training_id,image_ids, class_map)
+        data_access.add_prediction_labels(prediction_labels,training_id)
 
 
 TestClassifications = ("maine coon","german shephard","goldfinch","mackerel","african elephant","rattlesnake")

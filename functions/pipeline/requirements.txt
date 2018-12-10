@@ -10,3 +10,4 @@ six==1.11.0
 pg8000==1.12.3
 Pillow==5.3.0
 urlpath==1.1.4
+jsonpickle

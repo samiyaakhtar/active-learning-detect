@@ -1,5 +1,5 @@
 import logging
-
+import jsonpickle
 import azure.functions as func
 import json
 from ..shared.vott_parser import create_starting_vott_json
@@ -10,9 +10,7 @@ from ..shared.db_access import ImageTagDataAccess, ImageTagState
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
-    image_count = req.params.get('imageCount')
     user_name = req.params.get('userName')
-    tag_status = req.params.get('tagStatus')
     
     # setup response object
     headers = {
@@ -24,30 +22,23 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             headers=headers,
             body=json.dumps({"error": "invalid userName given or omitted"})
         )
-    elif not tag_status:
-        return func.HttpResponse(
-            status_code=400,
-            headers=headers,
-            body=json.dumps({"error": "tag status not specified"})
-        )
     else:
         try:
             # DB configuration
             data_access = ImageTagDataAccess(get_postgres_provider())
             user_id = data_access.create_user(user_name)
-            # Allowing image_count to be empty
-            if image_count:
-                image_count = int(image_count)
 
-            # Get tag data by status
-            image_id_to_urls = data_access.get_images_by_tag_status(user_id, tag_status.split(','), image_count)
-            image_id_to_image_tags = data_access.get_image_tags_for_image_ids(list(image_id_to_urls.keys()))
+            # TODO: Support POST http calls by merging with the existing "Upload" API.
+            # Ideally GET http calls rerurn all human annotated labels. 
+            # POST calls save all human annotated labels
+            logging.debug("User '{0}' requested labels".format(user_name))
 
-            existing_classifications_list = data_access.get_existing_classifications()
+            # Note: Currently we return all human annotated labels since TAGGING.CSV requires all rows
+            # No use case to return predicted labels at the moment.
+            labels = data_access.get_labels()
 
-            tags_json = create_starting_vott_json(image_id_to_urls, image_id_to_image_tags, existing_classifications_list)
-
-            content = json.dumps(tags_json)
+            #Encode the complex object nesting
+            content = jsonpickle.encode(labels,unpicklable=False)
             return func.HttpResponse(
                 status_code=200,
                 headers=headers,

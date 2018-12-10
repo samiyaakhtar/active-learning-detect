@@ -44,12 +44,20 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             data_access = ImageTagDataAccess(get_postgres_provider())
             user_id = data_access.create_user(user_name)
 
+            #TODO: Merge with the existing "Download" API
+            # If client adds the querystring param api/images&vott=true 
+            # Then we should do "check out" behavior and return a VOTT json in the
+            # return payload. This is already implemented in the "Download" API
+            # Consequently this "Images" API is all about images and optionally
+            # "check out" behavior. This supports both tagging and training needs
+
             # Get images info
             if image_ids:
                 image_infos = data_access.get_image_info_for_image_ids(image_ids.split(','))
             elif tag_status:
                 image_count = int(image_count)
-                images_by_tag_status = data_access.get_images_by_tag_status(user_id, tag_status, image_count)
+                images_by_tag_status = data_access.get_images_by_tag_status(tag_status, image_count)
+                logging.debug("Received {0} images in tag status {1}".format(len(images_by_tag_status),tag_status))
                 image_infos = data_access.get_image_info_for_image_ids(list(images_by_tag_status.keys()))
 
             content = json.dumps(image_infos)

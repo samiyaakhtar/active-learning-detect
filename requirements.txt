@@ -12,3 +12,4 @@ pg8000==1.12.3
 Pillow==5.3.0
 opencv_python
 urlpath==1.1.4
+jsonpickle

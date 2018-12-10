@@ -93,10 +93,21 @@ def convert_to_csv(training_data, file_location):
     
     print("Created csv files with metadata " + file_location + "/tagged.csv and " + file_location + "/totag.csv")
 
+def convert_labels_to_csv(data, tagging_output_location):
+    with open(tagging_output_location, 'w') as csvfile:
+        filewriter = csv.writer(csvfile, delimiter=',',quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        filewriter.writerow(['filename','class','xmin','xmax','ymin','ymax','height','width'])   
+        for img in data:
+            imagelocation = get_image_name_from_url(img["imagelocation"])
+            image_height = img["image_height"]
+            image_width = img["image_width"]
+            for label in img["labels"]:
+                data = [imagelocation, label["classificationname"], label['x_min'], label['x_max'], label['y_min'], label['y_max'], image_height, image_width]
+                filewriter.writerow(data)
 
 def get_image_name_from_url(image_url):
-    s = image_url.split('/')
-    return s[len(s)-1]
+    start_idx = image_url.rfind('/')+1
+    return image_url[start_idx:]
 
 
 if __name__ == "__main__":
