@@ -25,6 +25,7 @@ STORAGE_CONTAINER=vott
 [TAGGING]
 TAGGING_LOCATION=~/taggingdata
 TAGGING_USER="bhargav"
+TAGGING_IMAGE_DIR=${TAGGING:TAGGING_LOCATION}/AllImages
 ```
 
 `FUNCTIONS_KEY` is the Azure Functions Key that allows your CLI to authenticate with the management function
@@ -36,6 +37,7 @@ TAGGING_USER="bhargav"
 
 `TAGGING_LOCATION` is the location on the user's machine where media will be downloaded
 `TAGGING_USER` is your username.
+`TAGGING_IMAGE_DIR` is the location where images will be downloaded, usually /AllImages folder inside tagging_location. 
 
 ### Commands
 
