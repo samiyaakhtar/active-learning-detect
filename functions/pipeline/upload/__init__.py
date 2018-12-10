@@ -1,6 +1,5 @@
 import json
 import logging
-from ..shared.vott_parser import process_vott_json
 from ..shared.db_provider import get_postgres_provider
 from ..shared.db_access import ImageTag, ImageTagDataAccess
 
@@ -17,8 +16,7 @@ def __create_ImageTag_list(image_id, tags_list):
 def main(req: func.HttpRequest) -> func.HttpResponse:
     try:
         # TODO: Create if check for userId and valid json checks?
-        vott_json = req.get_json()
-        upload_data = process_vott_json(vott_json)
+        upload_data = req.get_json()
         user_name = req.params.get('userName')
 
         if not user_name:
@@ -55,6 +53,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             headers={ "content-type": "application/json"},
         )
     except Exception as e:
+        logging.error(str(e))
         return func.HttpResponse(
             "exception:" + str(e),
             status_code=500

@@ -7,6 +7,7 @@ import pathlib
 import os
 from azure.storage.blob import BlockBlobService, ContentSettings
 from utils.blob_utils import BlobStorage
+from utils.vott_parser import process_vott_json, create_starting_vott_json
 
 DEFAULT_NUM_IMAGES = 40
 LOWER_LIMIT = 0
@@ -138,7 +139,12 @@ def download(config, num_images, strategy=None):
         exist_ok=True
     )
 
-    local_images = download_images(config, data_dir, json_resp)
+    vott_json = create_starting_vott_json(json_resp['image_id_to_urls'], json_resp['image_id_to_image_tags'], json_resp['existing_classifications_list'])
+
+    json_data = {'vott_json': vott_json,
+                 'imageUrls': json_resp['imageUrls']}
+
+    local_images = download_images(config, data_dir, json_data)
     count = len(local_images)
     print("Successfully downloaded " + str(count) + " images.")
     for image_path in local_images:
@@ -204,12 +210,12 @@ def upload(config):
 
     with open(str(vott_json)) as json_file:
         json_data = json.load(json_file)
-
+    process_json = process_vott_json(json_data)
     query = {
         "userName": user_name
     }
 
-    response = requests.post(functions_url, json=json_data, params=query)
+    response = requests.post(functions_url, json=process_json, params=query)
     response.raise_for_status()
 
     resp_json = response.json()

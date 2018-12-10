@@ -3,7 +3,6 @@ import logging
 import azure.functions as func
 import json
 
-from ..shared.vott_parser import create_starting_vott_json
 from ..shared.db_provider import get_postgres_provider
 from ..shared.db_access import ImageTagDataAccess
 
@@ -44,10 +43,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
             existing_classifications_list = data_access.get_existing_classifications()
 
-            vott_json = create_starting_vott_json(image_id_to_urls, image_id_to_image_tags, existing_classifications_list)
-
             return_body_json = {"imageUrls": image_urls,
-                                "vottJson": vott_json}
+                                "image_id_to_urls": image_id_to_urls,
+                                "image_id_to_image_tags": image_id_to_image_tags,
+                                "existing_classifications_list": existing_classifications_list}
 
             content = json.dumps(return_body_json)
             return func.HttpResponse(
