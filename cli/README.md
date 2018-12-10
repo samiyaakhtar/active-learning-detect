@@ -26,6 +26,7 @@ STORAGE_CONTAINER=vott
 TAGGING_LOCATION=~/taggingdata
 TAGGING_USER="bhargav"
 TAGGING_IMAGE_DIR=${TAGGING:TAGGING_LOCATION}/AllImages
+TAGGED_OUTPUT=${TAGGING:TAGGING_LOCATION}/tagged.csv
 ```
 
 `FUNCTIONS_KEY` is the Azure Functions Key that allows your CLI to authenticate with the management function
@@ -38,6 +39,9 @@ TAGGING_IMAGE_DIR=${TAGGING:TAGGING_LOCATION}/AllImages
 `TAGGING_LOCATION` is the location on the user's machine where media will be downloaded
 `TAGGING_USER` is your username.
 `TAGGING_IMAGE_DIR` is the location where images will be downloaded, usually /AllImages folder inside tagging_location. 
+
+`TAGGING_IMAGE_DIR` is the location where all images will be downloaded to for training
+`TAGGED_OUTPUT` is the location of the CSV file that will have human labelled data
 
 ### Commands
 

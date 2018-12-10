@@ -17,6 +17,7 @@ TAGGING_SECTION = 'TAGGING'
 TAGGING_LOCATION_KEY = 'TAGGING_LOCATION'
 TAGGING_USER_KEY = 'TAGGING_USER'
 TAGGING_IMAGE_DIR_KEY='TAGGING_IMAGE_DIR'
+TAGGED_OUTPUT_KEY='TAGGED_OUTPUT'
 
 class Config():
     @staticmethod
@@ -47,11 +48,12 @@ class Config():
         tagging_location_value = tagging_config_section.get(TAGGING_LOCATION_KEY)
         tagging_user_value = tagging_config_section.get(TAGGING_USER_KEY)
         tagging_image_dir = tagging_config_section.get(TAGGING_IMAGE_DIR_KEY)
+        tagged_output = tagging_config_section.get(TAGGED_OUTPUT_KEY)
 
         if not tagging_location_value or not tagging_user_value:
             raise MissingConfigException()
 
-        return tagging_location_value, tagging_user_value, tagging_image_dir
+        return tagging_location_value, tagging_user_value, tagging_image_dir, tagged_output
         
     @staticmethod
     def functions_config_section(functions_config_section):
@@ -84,7 +86,7 @@ class Config():
             parser[STORAGE_SECTION]
         )
 
-        tagging_location, tagging_user, tagging_image_dir = Config.tagging_config_section(parser[TAGGING_SECTION])
+        tagging_location, tagging_user, tagging_image_dir, tagged_output = Config.tagging_config_section(parser[TAGGING_SECTION])
 
         return {
             "key": functions_key,
@@ -94,7 +96,8 @@ class Config():
             "storage_container": storage_container,
             "tagging_location": tagging_location,
             "tagging_user": tagging_user,
-            "tagging_image_dir": tagging_image_dir
+            "tagging_image_dir": tagging_image_dir,
+            "tagged_output": tagged_output
         }
 
     @staticmethod
