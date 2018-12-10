@@ -1,6 +1,5 @@
 import json
 
-
 def __build_tag_from_VottImageTag(image_tag):
     return {
         "x1": image_tag.x_min,

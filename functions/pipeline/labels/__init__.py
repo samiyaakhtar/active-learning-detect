@@ -2,7 +2,6 @@ import logging
 import jsonpickle
 import azure.functions as func
 import json
-from ..shared.vott_parser import create_starting_vott_json
 from ..shared.db_provider import get_postgres_provider
 from ..shared.db_access import ImageTagDataAccess, ImageTagState
 
