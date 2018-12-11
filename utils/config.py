@@ -16,7 +16,10 @@ STORAGE_CONTAINER = 'STORAGE_CONTAINER'
 TAGGING_SECTION = 'TAGGING'
 TAGGING_LOCATION_KEY = 'TAGGING_LOCATION'
 TAGGING_USER_KEY = 'TAGGING_USER'
-TAGGING_IMAGE_DIR_KEY='TAGGING_IMAGE_DIR'
+
+TRAINING_SECTION = 'TRAINING'
+TRAINING_LOCATION_KEY = 'TRAINING_LOCATION'
+TRAINING_IMAGE_DIR_KEY='TRAINING_IMAGE_DIR'
 TAGGED_OUTPUT_KEY='TAGGED_OUTPUT'
 
 class Config():
@@ -47,14 +50,23 @@ class Config():
     def tagging_config_section(tagging_config_section):
         tagging_location_value = tagging_config_section.get(TAGGING_LOCATION_KEY)
         tagging_user_value = tagging_config_section.get(TAGGING_USER_KEY)
-        tagging_image_dir = tagging_config_section.get(TAGGING_IMAGE_DIR_KEY)
-        tagged_output = tagging_config_section.get(TAGGED_OUTPUT_KEY)
 
         if not tagging_location_value or not tagging_user_value:
             raise MissingConfigException()
 
-        return tagging_location_value, tagging_user_value, tagging_image_dir, tagged_output
+        return tagging_location_value, tagging_user_value
         
+    @staticmethod
+    def training_config_section(training_config_section):
+        training_image_dir = training_config_section.get(TRAINING_IMAGE_DIR_KEY)
+        tagged_output = training_config_section.get(TAGGED_OUTPUT_KEY)
+        training_location = training_config_section.get(TRAINING_LOCATION_KEY)
+
+        if not training_image_dir or not tagged_output or not training_location:
+            raise MissingConfigException()
+
+        return training_image_dir, tagged_output, training_location
+
     @staticmethod
     def functions_config_section(functions_config_section):
         functions_key_value = functions_config_section.get(FUNCTIONS_KEY)
@@ -78,6 +90,9 @@ class Config():
         if TAGGING_SECTION not in sections:
             raise MissingConfigException()
 
+        if TRAINING_SECTION not in sections:
+            raise MissingConfigException()
+
         functions_key, functions_url = Config.functions_config_section(
             parser[FUNCTIONS_SECTION]
         )
@@ -86,7 +101,9 @@ class Config():
             parser[STORAGE_SECTION]
         )
 
-        tagging_location, tagging_user, tagging_image_dir, tagged_output = Config.tagging_config_section(parser[TAGGING_SECTION])
+        tagging_location, tagging_user = Config.tagging_config_section(parser[TAGGING_SECTION])
+
+        training_image_dir, tagged_output, training_location = Config.training_config_section(parser[TRAINING_SECTION])
 
         return {
             "key": functions_key,
@@ -96,7 +113,8 @@ class Config():
             "storage_container": storage_container,
             "tagging_location": tagging_location,
             "tagging_user": tagging_user,
-            "tagging_image_dir": tagging_image_dir,
+            "training_location": training_location,
+            "training_image_dir": training_image_dir,
             "tagged_output": tagged_output
         }
 
@@ -111,9 +129,9 @@ class Config():
         return Config.read_config_with_parsed_config(parser)
 
     @staticmethod
-    def initialize_tagging_location(config):
+    def initialize_training_location(config):
         file_tree = pathlib.Path(os.path.expanduser(
-            config.get("tagging_location"))
+            config.get("training_location"))
         )
 
         if file_tree.exists():

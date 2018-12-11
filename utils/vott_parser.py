@@ -105,6 +105,15 @@ def process_vott_json(json):
     # Unvisisted imageIds
     unvisited_ids = sorted(list(set(all_ids) - set(visited_ids)))
 
+    #TODO: A cleaner way to do this
+    all_class_name_lists = []
+    unique_class_names = []
+    for val in id_to_tags_dict.values():
+        for v in val:
+            all_class_name_lists.append(v["classes"])
+    for c in set(x for l in all_class_name_lists for x in l):
+        unique_class_names.append(c)
+
     return {
             "totalNumImages" : len(all_ids),
             "numImagesVisted" : len(visited_ids),
@@ -113,7 +122,8 @@ def process_vott_json(json):
             "imagesVisited" : visited_ids,
             "imagesNotVisited" : unvisited_ids,
             "imagesVisitedNoTag": visited_no_tag_ids,
-            "imageIdToTags": id_to_tags_dict
+            "imageIdToTags": id_to_tags_dict,
+            "uniqueClassNames": unique_class_names
         }
 
 

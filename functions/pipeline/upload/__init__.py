@@ -39,7 +39,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 all_imagetags.extend(__create_ImageTag_list(image_id, ids_to_tags[image_id]))
 
         logging.info("Update all visited images with tags and set state to completed")
-        data_access.update_tagged_images(all_imagetags, user_id)
+        unique_class_names = upload_data["uniqueClassNames"]
+        class_map = data_access.get_classification_map(unique_class_names,user_id)
+        annotated_labels = data_access.convert_to_annotated_label(all_imagetags,class_map)
+        data_access.update_tagged_images_v2(annotated_labels,user_id)
 
         logging.info("Update visited but no tags identified images")
         data_access.update_completed_untagged_images(upload_data["imagesVisitedNoTag"], user_id)

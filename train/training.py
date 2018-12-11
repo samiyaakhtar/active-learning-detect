@@ -18,10 +18,10 @@ def train(config, num_images):
     training_data = download_data_for_training(config, num_images)
 
     # Make sure directory is clean:
-    file_location = Config.initialize_tagging_location(config)
+    file_location = Config.initialize_training_location(config)
 
     # Grab tagged and totag images from the blob storage
-    download_images(training_data["imageURLs"], config.get('tagging_image_dir'))
+    download_images(training_data["imageURLs"], config.get('training_image_dir'))
 
     # create csv file from this data
     convert_labels_to_csv(training_data["taggedLabelData"],config.get('tagged_output'))
@@ -76,7 +76,9 @@ def download_data_for_training(config, num_images):
 def convert_labels_to_csv(data, tagging_output_file_path):
     try:
         if not os.path.exists(tagging_output_file_path):
-            os.makedirs(os.path.dirname(tagging_output_file_path))
+            dir_name = os.path.dirname(tagging_output_file_path)
+            if not os.path.exists(dir_name):
+                os.makedirs(dir_name)
         with open(tagging_output_file_path, 'w') as csvfile:
             filewriter = csv.writer(csvfile, delimiter=',',quotechar='|', quoting=csv.QUOTE_MINIMAL)
             filewriter.writerow(['filename','class','xmin','xmax','ymin','ymax','height','width'])   
