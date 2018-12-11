@@ -64,11 +64,13 @@ def onboard_folder(config, folder_name):
     response = requests.post(functions_url, json=data, params=query)
     response.raise_for_status()
 
-    json_resp = response.json()
-    count = len(json_resp['imageUrls'])
-    print("Successfully uploaded " + str(count) + " images.")
-    for url in json_resp['imageUrls']:
-        print(url)
+    print("Successfully uploaded images.")
+    #TODO: Recent Onboarding refactoring doesn't return ImageURLs anymore
+    # json_resp = response.json()
+    # count = len(json_resp['imageUrls'])
+    # print("Successfully uploaded " + str(count) + " images.")
+    # for url in json_resp['imageUrls']:
+    #     print(url)
 
 
 def onboard_container(config, account, key, container):
@@ -123,6 +125,10 @@ def download(config, num_images, strategy=None):
     count = len(json_resp['imageUrls'])
 
     print("Received " + str(count) + " files.")
+
+    if count == 0:
+        print("No images could be retrieved with the current retrieval strategy!")
+        return
 
     file_tree = pathlib.Path(os.path.expanduser(
         config.get("tagging_location"))
@@ -179,21 +185,15 @@ def download_images(config, image_dir, json_resp):
 
 
 def write_vott_data(image_dir, json_resp):
-    data_file = pathlib.Path(image_dir / "data.json")
-    # vott_data = json_resp.get("vott", None)
-    vott_data = None
+    #VOTT expects json file at same level as directory
+    data_file = pathlib.Path(image_dir / "../data.json")
+    vott_data = json_resp.get("vott_json", None)
 
     if not vott_data:
         return
 
-    try:
-        vott_json = json.loads(vott_data)
-    except ValueError as e:
-        print("Corrupted VOTT data received.")
-        return
-
-    with open(str(data_file), "wb") as file:
-        vott_json_string = json.dumps(vott_json)
+    with open(str(data_file), "w") as file:
+        vott_json_string = json.dumps(vott_data)
         file.writelines(vott_json_string)
         file.close()
 
