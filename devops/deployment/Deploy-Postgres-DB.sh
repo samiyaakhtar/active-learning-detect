@@ -80,6 +80,6 @@ if $SSL_POSTGRES; then
     echo
     az postgres server update \
         --resource-group $ResourceGroup \
-        --server-name $ServerName \ 
+        --name $ServerName \ 
         --ssl-enforcement Disabled
 fi

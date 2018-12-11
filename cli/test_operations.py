@@ -15,6 +15,10 @@ from utils.config import (
     TAGGING_SECTION,
     TAGGING_LOCATION_KEY,
     TAGGING_USER_KEY,
+    TRAINING_SECTION,
+    TRAINING_LOCATION_KEY,
+    TRAINING_IMAGE_DIR_KEY,
+    TAGGED_OUTPUT_KEY
 )
 from .operations import (
     _download_bounds,
@@ -78,6 +82,12 @@ class TestConfig(unittest.TestCase):
                 self._mock_sections([FUNCTIONS_SECTION, STORAGE_SECTION], {})
             )
 
+    def test_missing_training_section(self):
+        with self.assertRaises(MissingConfigException):
+            Config.read_config_with_parsed_config(
+                self._mock_sections([FUNCTIONS_SECTION, STORAGE_SECTION, TAGGING_SECTION], {})
+            )
+
     def test_missing_functions_config_values(self):
         with self.assertRaises(MissingConfigException):
             Config.functions_config_section({})
@@ -92,7 +102,7 @@ class TestConfig(unittest.TestCase):
 
     def test_acceptable_config(self):
         mock_data = self._mock_sections(
-            [STORAGE_SECTION, FUNCTIONS_SECTION, TAGGING_SECTION],
+            [STORAGE_SECTION, FUNCTIONS_SECTION, TAGGING_SECTION,TRAINING_SECTION],
             {
                 STORAGE_SECTION: {
                     STORAGE_KEY: "test",
@@ -106,6 +116,13 @@ class TestConfig(unittest.TestCase):
                 TAGGING_SECTION: {
                     TAGGING_LOCATION_KEY: "test",
                     TAGGING_USER_KEY: "test"
+                }
+                ,
+                TRAINING_SECTION: {
+                    TRAINING_LOCATION_KEY: "test",
+                    TRAINING_IMAGE_DIR_KEY: "test",
+                    TAGGED_OUTPUT_KEY:"test"
+
                 }
             }
         )

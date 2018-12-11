@@ -30,7 +30,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         req_body = req.get_json()
-        logging.info(req.get_json())
+        logging.debug(req.get_json())
         raw_url_list = req_body["imageUrls"]
     except ValueError:
         logging.error("Error: Unable to decode POST body.")
@@ -62,9 +62,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     try:
-        logging.info("Now connecting to database...")
         data_access = ImageTagDataAccess(get_postgres_provider())
-        logging.info("Connected.")
     except Exception as e:
         logging.error("Error: Database connection failed. Exception: " + str(e))
         return func.HttpResponse(

@@ -105,8 +105,19 @@ class ImageTagDataAccess(object):
             conn = self._db_provider.get_connection()
             try:
                 cursor = conn.cursor()
-                query = "INSERT INTO User_Info (UserName) VALUES (%s) ON CONFLICT (username) DO UPDATE SET username=EXCLUDED.username RETURNING UserId;"
-                cursor.execute(query,(user_name,))
+                query = ("WITH existingUser AS ( "
+                        "SELECT Userid,UserName FROM User_Info "
+                        "WHERE username = %s), "
+                    "data(user_name) AS (values (%s)), "
+                    "newUser AS ( "
+                        "INSERT INTO User_Info (UserName) "
+                        "SELECT d.user_name FROM data d "
+                        "WHERE NOT EXISTS (select 1 FROM User_Info u WHERE u.UserName = d.user_name) "
+                        "RETURNING userid,username) "
+                    "SELECT userid,username FROM newUser "  
+                    "UNION ALL "
+                    "SELECT userid,username FROM existingUser")
+                cursor.execute(query,(user_name,user_name,))
                 user_id = cursor.fetchone()[0]
                 conn.commit()
             finally: cursor.close()
@@ -461,6 +472,7 @@ class ImageTagDataAccess(object):
                 class_names_value = ", ".join("('{0}')".format(class_name) for class_name in class_names)
                 query = query.format(class_names_where,class_names_value)
                 cursor.execute(query)
+                conn.commit()
                 for row in cursor:
                     logging.debug(row)
                     class_to_id[row[1]] = int(row[0])
@@ -601,7 +613,7 @@ def main():
 
     #img_labels = data_access.get_labels()
 
-    simulate_onboarding = True
+    simulate_onboarding = False
     if simulate_onboarding:
         list_of_image_infos = generate_test_image_infos(5)
         url_to_image_id_map = data_access.add_new_images(list_of_image_infos,user_id)
