@@ -272,8 +272,11 @@ class ImageTagDataAccess(object):
                 cursor.execute(query.format(image_count, ImageTagState.READY_TO_TAG, ImageTagState.TAG_IN_PROGRESS))
 
                 logging.debug("Got image tags back for image_count={0}".format(image_count))
+                # TODO: Optimize below two lines to simplify unique image ids, and improve the
+                # json output being returned, unflatten it
                 checked_out_images = list(cursor)
                 images_ids_to_update = list({ row[0] for row in cursor })
+
                 self._update_images(images_ids_to_update, ImageTagState.TAG_IN_PROGRESS, user_id, conn)
             finally:
                 cursor.close()
