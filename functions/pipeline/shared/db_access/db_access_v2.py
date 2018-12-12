@@ -55,6 +55,7 @@ class ImageLabel(object):
         self.user_folder = user_folder
         self.labels = labels
 
+
 class Tag(object):
     def __init__(self,classificationname, x_min: float, x_max: float, y_min: float, y_max: float):
         self.x_min = x_min
@@ -237,7 +238,7 @@ class ImageTagDataAccess(object):
     def checkout_images(self, image_count, user_id):
         if type(image_count) is not int:
             raise TypeError('image_count must be an integer')
-        checked_out_images = []
+        image_id_to_image_labels = {}
         try:
             conn = self._db_provider.get_connection()
             try:
@@ -267,15 +268,27 @@ class ImageTagDataAccess(object):
                     "join image_info i on i.imageid = its.imageid "
                     "join tag_state ts on ts.tagstateid = its.tagstateid "
                     "where  "
-                        "its.tagstateid in ({1}) "
-                    "limit {0}")
-                cursor.execute(query.format(image_count, ImageTagState.READY_TO_TAG))
+                        "its.tagstateid in ({0}) ")
+                cursor.execute(query.format(ImageTagState.READY_TO_TAG))
 
                 logging.debug("Got image tags back for image_count={0}".format(image_count))
-                # TODO: Optimize below two lines to simplify unique image ids, and improve the
-                # json output being returned, unflatten it
-                checked_out_images = list(cursor)
-                images_ids_to_update = list(set(row[0] for row in checked_out_images ))
+                # We have to enforce image_count outside of db query, because multiple tags
+                # may exist for the same image in prediction_labels
+                count = 0
+                for row in cursor:
+                    image_tag = ImageTag(row[0], float(row[4]), float(row[5]), float(row[6]), float(row[7]), row[3])
+                    if row[0] not in image_id_to_image_labels:
+                        if count >= image_count:
+                            break
+
+                        image_label = ImageLabel(row[0], row[1], row[8], row[9], [image_tag])
+                        image_id_to_image_labels[row[0]] = image_label
+                        count = count + 1
+                    else:
+                        image_id_to_image_labels[row[0]].labels.append(image_tag)
+
+                logging.debug("Checked out images: " + str(image_id_to_image_labels))
+                images_ids_to_update = list(image_id_to_image_labels.keys())
                 self._update_images(images_ids_to_update, ImageTagState.TAG_IN_PROGRESS, user_id, conn)
             finally:
                 cursor.close()
@@ -284,7 +297,7 @@ class ImageTagDataAccess(object):
             raise
         finally:
             conn.close()
-        return checked_out_images
+        return list(image_id_to_image_labels.values())
 
 
     def get_existing_classifications(self):
@@ -545,7 +558,6 @@ class ImageTagDataAccess(object):
 
 class ArgumentException(Exception):
     pass
-
 
 def main():
     #################################################################

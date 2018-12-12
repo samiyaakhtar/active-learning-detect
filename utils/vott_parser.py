@@ -1,15 +1,5 @@
 import json
-
-
-# Entity class for Tags stored in DB
-class ImageTag(object):
-    def __init__(self, image_id, x_min, x_max, y_min, y_max, classification_names):
-        self.image_id = image_id
-        self.x_min = x_min
-        self.x_max = x_max
-        self.y_min = y_min
-        self.y_max = y_max
-        self.classification_names = classification_names
+from functions.pipeline.shared.db_access import ImageTag
 
 # Vott tags have image height & width data as well.
 class VottImageTag(ImageTag):
@@ -64,6 +54,35 @@ def __build_frames_data(image_id_to_urls, image_id_to_image_tags):
     return frames
 
 
+def create_vott_json_from_image_labels(image_labels, existing_classifications_list):
+    frames = {}
+    image_urls = []
+
+    for label in image_labels:
+        image_file_name = __get_filename_from_fullpath(label.imagelocation)
+        image_urls.append(label.imagelocation)
+        image_tags = []
+
+        for tag in label.labels:
+            vott_image_tag = VottImageTag(label.image_id, tag.x_min, tag.x_max, tag.y_min, tag.y_max, tag.classification_names, label.image_height, label.image_width, label.imagelocation)
+            image_tags.append(__build_tag_from_VottImageTag(vott_image_tag))
+
+        frames[image_file_name] = image_tags
+
+    # "inputTags"
+    class_length = len(existing_classifications_list)
+    classification_str = ""
+    for i in range(class_length):
+        classification_str += existing_classifications_list[i]
+        if i != class_length-1: classification_str+=","
+    
+    return {
+        "frames": frames,
+        "inputTags": classification_str,
+        "scd": False  # Required for VoTT and image processing? unknown if it's also used for video.
+    }, image_urls
+
+
 # For download function
 def create_starting_vott_json(image_id_to_urls, image_id_to_image_tags, existing_classifications_list):
     # "frames"
@@ -96,7 +115,10 @@ def __get_id_from_fullpath(fullpath):
 def __create_tag_data_list(json_tag_list):
     processed_tags = []
     for json_tag in json_tag_list:
-        processed_tags.append(__process_json_tag(json_tag))
+        # Currently, tags from prediction_labels don't have a UID so they can't be 
+        # uploaded into the system.
+        if "UID" in json_tag:
+            processed_tags.append(__process_json_tag(json_tag))
     return processed_tags
 
 
