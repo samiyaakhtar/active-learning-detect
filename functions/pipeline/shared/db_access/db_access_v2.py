@@ -267,16 +267,18 @@ class ImageTagDataAccess(object):
                     "join image_info i on i.imageid = its.imageid "
                     "join tag_state ts on ts.tagstateid = its.tagstateid "
                     "where  "
-                        "its.tagstateid in (1,2) "
+                        "its.tagstateid in ({1},{2}) "
                     "limit {0}")
-                cursor.execute(query.format(image_count,))
+                cursor.execute(query.format(image_count, ImageTagState.READY_TO_TAG, ImageTagState.TAG_IN_PROGRESS))
 
                 logging.debug("Got image tags back for image_count={0}".format(image_count))
                 image_id_to_tag_data = {}
                 images_ids_to_update = []
                 for row in cursor:
                     image_id_to_tag_data[row[0]] = row
-                    images_ids_to_update.append(row[0])
+                    # we might have dupes from this query
+                    if row[0] not in images_ids_to_update:
+                        images_ids_to_update.append(row[0])
                 self._update_images(images_ids_to_update, ImageTagState.TAG_IN_PROGRESS, user_id, conn)
             finally:
                 cursor.close()
@@ -514,6 +516,7 @@ class ImageTagDataAccess(object):
     # efficient with the nesting to avoid dupe bounding boxes per image
     def get_labels(self):        
         id_to_imagelabels = {}
+        conn = None
         try:
             conn = self._db_provider.get_connection()
             try:
