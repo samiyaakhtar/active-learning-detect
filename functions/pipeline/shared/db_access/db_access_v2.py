@@ -267,9 +267,9 @@ class ImageTagDataAccess(object):
                     "join image_info i on i.imageid = its.imageid "
                     "join tag_state ts on ts.tagstateid = its.tagstateid "
                     "where  "
-                        "its.tagstateid in ({1},{2}) "
+                        "its.tagstateid in ({1}) "
                     "limit {0}")
-                cursor.execute(query.format(image_count, ImageTagState.READY_TO_TAG, ImageTagState.TAG_IN_PROGRESS))
+                cursor.execute(query.format(image_count, ImageTagState.READY_TO_TAG))
 
                 logging.debug("Got image tags back for image_count={0}".format(image_count))
                 # TODO: Optimize below two lines to simplify unique image ids, and improve the
