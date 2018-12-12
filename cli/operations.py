@@ -144,7 +144,7 @@ def download(config, num_images, strategy=None):
         parents=True,
         exist_ok=True
     )
-    vott_json, image_urls = _build_vott_json_from_raw_data(json_resp["images"])
+    vott_json, image_urls = _build_vott_json_from_raw_data(json_resp["images"], json_resp["classification_list"])
 
     json_data = {'vott_json': vott_json,
                  'imageUrls': image_urls}
@@ -221,10 +221,9 @@ def upload(config):
     print("Done!")
 
 
-def _build_vott_json_from_raw_data(rawdata):
+def _build_vott_json_from_raw_data(rawdata, classification_list):
     image_id_to_image_url = {}
     image_id_to_image_tag = {}
-    existing_classifications_list = []
     for row in rawdata:
         image_id = row[0]
         image_id_to_image_url[image_id] = row[1]
@@ -233,10 +232,7 @@ def _build_vott_json_from_raw_data(rawdata):
             image_id_to_image_tag[image_id] = []
         image_id_to_image_tag[image_id].append(build_id_to_VottImageTag(row))
 
-        if row[3] and row[3] not in existing_classifications_list:
-            existing_classifications_list.append(row[3])
-
-    vott_json = create_starting_vott_json(image_id_to_image_url, image_id_to_image_tag, existing_classifications_list)
+    vott_json = create_starting_vott_json(image_id_to_image_url, image_id_to_image_tag, classification_list)
 
     return vott_json, list(image_id_to_image_url.values())
 

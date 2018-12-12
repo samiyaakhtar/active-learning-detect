@@ -267,16 +267,15 @@ class ImageTagDataAccess(object):
                     "join image_info i on i.imageid = its.imageid "
                     "join tag_state ts on ts.tagstateid = its.tagstateid "
                     "where  "
-                        "its.tagstateid in ({1},{2}) "
+                        "its.tagstateid in ({1}) "
                     "limit {0}")
-                cursor.execute(query.format(image_count, ImageTagState.READY_TO_TAG, ImageTagState.TAG_IN_PROGRESS))
+                cursor.execute(query.format(image_count, ImageTagState.READY_TO_TAG))
 
                 logging.debug("Got image tags back for image_count={0}".format(image_count))
                 # TODO: Optimize below two lines to simplify unique image ids, and improve the
                 # json output being returned, unflatten it
                 checked_out_images = list(cursor)
-                images_ids_to_update = list({ row[0] for row in cursor })
-
+                images_ids_to_update = list(set(row[0] for row in checked_out_images ))
                 self._update_images(images_ids_to_update, ImageTagState.TAG_IN_PROGRESS, user_id, conn)
             finally:
                 cursor.close()

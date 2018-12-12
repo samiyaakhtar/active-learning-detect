@@ -38,8 +38,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             
             image_count = int(image_count)
             image_id_to_tag_data = data_access.checkout_images(image_count, user_id)
+            existing_classifications_list = data_access.get_existing_classifications()
+
             return_body_json = {
-                "images": image_id_to_tag_data
+                "images": image_id_to_tag_data,
+                "classification_list": existing_classifications_list
             }
 
             content = json.dumps(return_body_json)
