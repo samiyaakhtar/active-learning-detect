@@ -268,8 +268,8 @@ class ImageTagDataAccess(object):
                     "join image_info i on i.imageid = its.imageid "
                     "join tag_state ts on ts.tagstateid = its.tagstateid "
                     "where  "
-                        "its.tagstateid in ({0}) ")
-                cursor.execute(query.format(ImageTagState.READY_TO_TAG))
+                        "its.tagstateid in ({0},{1}) ")
+                cursor.execute(query.format(ImageTagState.READY_TO_TAG, ImageTagState.INCOMPLETE_TAG))
 
                 logging.debug("Got image tags back for image_count={0}".format(image_count))
                 # We have to enforce image_count outside of db query, because multiple tags
