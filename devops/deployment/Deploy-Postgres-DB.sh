@@ -78,8 +78,5 @@ if $SSL_POSTGRES; then
     echo
     echo "WARNING: Disabling SSL enforcement on Postgres host."
     echo
-    az postgres server update \
-        --resource-group $ResourceGroup \
-        --name $ServerName \ 
-        --ssl-enforcement Disabled
+    az postgres server update --resource-group $ResourceGroup --name $ServerName --ssl-enforcement Disabled
 fi
