@@ -237,7 +237,7 @@ class ImageTagDataAccess(object):
     def checkout_images(self, image_count, user_id):
         if type(image_count) is not int:
             raise TypeError('image_count must be an integer')
-
+        checked_out_images = []
         try:
             conn = self._db_provider.get_connection()
             try:
@@ -272,13 +272,8 @@ class ImageTagDataAccess(object):
                 cursor.execute(query.format(image_count, ImageTagState.READY_TO_TAG, ImageTagState.TAG_IN_PROGRESS))
 
                 logging.debug("Got image tags back for image_count={0}".format(image_count))
-                image_id_to_tag_data = {}
-                images_ids_to_update = []
-                for row in cursor:
-                    image_id_to_tag_data[row[0]] = row
-                    # we might have dupes from this query
-                    if row[0] not in images_ids_to_update:
-                        images_ids_to_update.append(row[0])
+                checked_out_images = list(cursor)
+                images_ids_to_update = list({ row[0] for row in cursor })
                 self._update_images(images_ids_to_update, ImageTagState.TAG_IN_PROGRESS, user_id, conn)
             finally:
                 cursor.close()
@@ -287,7 +282,7 @@ class ImageTagDataAccess(object):
             raise
         finally:
             conn.close()
-        return image_id_to_tag_data
+        return checked_out_images
 
 
     def get_existing_classifications(self):

@@ -122,20 +122,10 @@ def download(config, num_images, strategy=None):
     response.raise_for_status()
 
     json_resp = response.json()
-    count = len(json_resp['images'].keys())
+    count = len(json_resp['images'])
 
     print("Received " + str(count) + " files.")
-
-    image_id_to_image_url = {}
-    image_id_to_image_tag = {}
-    existing_classifications_list = []
-    for image_id in json_resp['images']:
-        row = json_resp['images'][image_id]
-        image_id_to_image_url[image_id] = row[1]
-        image_id_to_image_tag[image_id] = build_id_to_VottImageTag(row)
-        if row[3] and row[3] not in existing_classifications_list:
-            existing_classifications_list.append(row[3])
-
+    
     if count == 0:
         print("No images could be retrieved with the current retrieval strategy!")
         return
@@ -154,11 +144,10 @@ def download(config, num_images, strategy=None):
         parents=True,
         exist_ok=True
     )
-
-    vott_json = create_starting_vott_json(image_id_to_image_url, image_id_to_image_tag, existing_classifications_list)
+    vott_json, image_urls = _build_vott_json_from_raw_data(json_resp["images"])
 
     json_data = {'vott_json': vott_json,
-                 'imageUrls': list(image_id_to_image_url.values())}
+                 'imageUrls': image_urls}
 
     local_images = download_images(config, data_dir, json_data)
     count = len(local_images)
@@ -230,3 +219,24 @@ def upload(config):
 
     resp_json = response.json()
     print("Done!")
+
+
+def _build_vott_json_from_raw_data(rawdata):
+    image_id_to_image_url = {}
+    image_id_to_image_tag = {}
+    existing_classifications_list = []
+    for row in rawdata:
+        image_id = row[0]
+        image_id_to_image_url[image_id] = row[1]
+
+        if image_id not in image_id_to_image_tag:
+            image_id_to_image_tag[image_id] = []
+        image_id_to_image_tag[image_id].append(build_id_to_VottImageTag(row))
+
+        if row[3] and row[3] not in existing_classifications_list:
+            existing_classifications_list.append(row[3])
+
+    vott_json = create_starting_vott_json(image_id_to_image_url, image_id_to_image_tag, existing_classifications_list)
+
+    return vott_json, list(image_id_to_image_url.values())
+

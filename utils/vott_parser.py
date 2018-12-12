@@ -50,7 +50,8 @@ def build_id_to_VottImageTag(row):
 def __build_tag_list_from_VottImageTags(image_tag_list):
     tag_list = []
     for image_tag in image_tag_list:
-        tag_list.append(__build_tag_from_VottImageTag(image_tag))
+        if image_tag:
+            tag_list.append(__build_tag_from_VottImageTag(image_tag))
     return tag_list
 
 
