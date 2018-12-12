@@ -1,5 +1,24 @@
 import json
 
+
+# Entity class for Tags stored in DB
+class ImageTag(object):
+    def __init__(self, image_id, x_min, x_max, y_min, y_max, classification_names):
+        self.image_id = image_id
+        self.x_min = x_min
+        self.x_max = x_max
+        self.y_min = y_min
+        self.y_max = y_max
+        self.classification_names = classification_names
+
+# Vott tags have image height & width data as well.
+class VottImageTag(ImageTag):
+    def __init__(self, image_id, x_min, x_max, y_min, y_max, classification_names, image_height, image_width, image_location):
+        super().__init__(image_id, x_min, x_max, y_min, y_max, classification_names)
+        self.image_height = image_height
+        self.image_width = image_width
+        self.image_location = image_location
+
 def __build_tag_from_VottImageTag(image_tag):
     return {
         "x1": image_tag.x_min,
@@ -13,10 +32,26 @@ def __build_tag_from_VottImageTag(image_tag):
     }
 
 
+def build_id_to_VottImageTag(row):
+    tag_id_to_VottImageTag = {}
+    try :
+        tag_id = row[0]
+        if tag_id in tag_id_to_VottImageTag:
+            tag_id_to_VottImageTag[tag_id].classification_names.append(row[6].strip())
+        elif row[4] and row[5] and row[6] and row[7]:
+            tag_id_to_VottImageTag[tag_id] = VottImageTag(row[0], float(row[4]), float(row[5]),
+                                                            float(row[6]), float(row[7]), [row[3].strip()],
+                                                            row[8], row[9], row[1])
+    except Exception as e:
+        print("An error occurred building VottImageTag dict: {0}".format(e))
+        raise
+    return tag_id_to_VottImageTag
+
 def __build_tag_list_from_VottImageTags(image_tag_list):
     tag_list = []
     for image_tag in image_tag_list:
-        tag_list.append(__build_tag_from_VottImageTag(image_tag))
+        if image_tag:
+            tag_list.append(__build_tag_from_VottImageTag(image_tag))
     return tag_list
 
 

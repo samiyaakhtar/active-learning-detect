@@ -74,14 +74,6 @@ class PredictionLabel(AnnotatedLabel):
         self.image_confidence = image_confidence
 
 
-# Vott tags have image height & width data as well.
-class VottImageTag(ImageTag):
-    def __init__(self, image_id, x_min, x_max, y_min, y_max, classification_names, image_height, image_width, image_location):
-        super().__init__(image_id, x_min, x_max, y_min, y_max, classification_names)
-        self.image_height = image_height
-        self.image_width = image_width
-        self.image_location = image_location
-
 
 class ImageTagDataAccess(object):
     def __init__(self,  db_provider):
@@ -240,95 +232,60 @@ class ImageTagDataAccess(object):
         finally:
             conn.close()
         return list(images_info)
-  
-    def get_image_tags_for_image_ids(self, image_ids):
-        if not image_ids:
-            return dict()
-            
-        image_id_to_vott_tags = {}
+
+
+    def checkout_images(self, image_count, user_id):
+        if type(image_count) is not int:
+            raise TypeError('image_count must be an integer')
+        checked_out_images = []
         try:
             conn = self._db_provider.get_connection()
             try:
                 cursor = conn.cursor()
-                ids = ''
-                for id in image_ids:
-                    ids += str(id) + ','
-                ids = ids[:-1]
-                query = ("SELECT image_tags.imagetagid, image_info.imageid, x_min, x_max, y_min, y_max, "
-                         "classification_info.classificationname, image_info.height, image_info.width, image_info.imagelocation "
-                            "FROM image_tags "
-                                "inner join tags_classification on image_tags.imagetagid = tags_classification.imagetagid "
-                                "inner join classification_info on tags_classification.classificationid = classification_info.classificationid "
-                                "inner join image_info on image_info.imageid = image_tags.imageid "
-                            "WHERE image_tags.imageid IN ({0});")
-                cursor.execute(query.format(ids,))
+                query = ("with pl as ( "
+                        "SELECT p.*, ci.classificationname  "
+                        "FROM prediction_labels p "
+                        "join classification_info ci on ci.classificationid = p.classificationid "
+                        "WHERE trainingid = (select MAX(trainingid) From training_info) "
+                    ") "
+                    "select  "
+                        "its.imageid, "
+                        "i.imagelocation, "
+                        "pl.classificationid, "
+                        "pl.classificationname, "
+                        "pl.x_min, "
+                        "pl.x_max, "
+                        "pl.y_min, "
+                        "pl.y_max, "
+                        "i.height, "
+                        "i.width, "
+                        "pl.boxconfidence, "
+                        "pl.imageconfidence, "
+                        "ts.tagstatename "
+                    "from image_tagging_state its  "
+                    "left outer join pl on its.imageid = pl.imageid "
+                    "join image_info i on i.imageid = its.imageid "
+                    "join tag_state ts on ts.tagstateid = its.tagstateid "
+                    "where  "
+                        "its.tagstateid in ({1},{2}) "
+                    "limit {0}")
+                cursor.execute(query.format(image_count, ImageTagState.READY_TO_TAG, ImageTagState.TAG_IN_PROGRESS))
 
-                logging.debug("Got image tags back for image_id={}".format(image_ids))
-                tag_id_to_vott_tags = self.__build_id_to_VottImageTag(cursor)
-                for vott_tag in tag_id_to_vott_tags.values():
-                    if vott_tag.image_id not in image_id_to_vott_tags:
-                        image_id_to_vott_tags[vott_tag.image_id] = []
-                    image_id_to_vott_tags[vott_tag.image_id].append(vott_tag)
+                logging.debug("Got image tags back for image_count={0}".format(image_count))
+                # TODO: Optimize below two lines to simplify unique image ids, and improve the
+                # json output being returned, unflatten it
+                checked_out_images = list(cursor)
+                images_ids_to_update = list({ row[0] for row in cursor })
+
+                self._update_images(images_ids_to_update, ImageTagState.TAG_IN_PROGRESS, user_id, conn)
             finally:
                 cursor.close()
         except Exception as e:
-            logging.error("An error occurred getting image tags for image ids = {0}: {1}".format(image_ids, e))
+            logging.error("An error occurred checking out {0} images: {1}".format(image_count, e))
             raise
         finally:
             conn.close()
-        return image_id_to_vott_tags
-
-    def get_image_tags(self, image_id: int):
-        if type(image_id) is not int:
-            raise TypeError('image_id must be an integer')
-
-        try:
-            conn = self._db_provider.get_connection()
-            try:
-                cursor = conn.cursor()
-                query = ("SELECT image_tags.imagetagid, image_info.imageid, x_min, x_max, y_min, y_max, "
-                         "classification_info.classificationname, image_info.height, image_info.width, image_info.imagelocation "
-                            "FROM image_tags "
-                                "inner join tags_classification on image_tags.imagetagid = tags_classification.imagetagid "
-                                "inner join classification_info on tags_classification.classificationid = classification_info.classificationid "
-                                "inner join image_info on image_info.imageid = image_tags.imageid "
-                            "WHERE image_tags.imageid = {0};")
-                cursor.execute(query.format(image_id,))
-
-                logging.debug("Got image tags back for image_id={}".format(image_id))
-                tag_id_to_VottImageTag = self.__build_id_to_VottImageTag(cursor)
-
-            finally:
-                cursor.close()
-        except Exception as e:
-            logging.error("An error occurred getting image tags for image id = {0}: {1}".format(image_id, e))
-            raise
-        finally:
-            conn.close()
-        return list(tag_id_to_VottImageTag.values())
-
-    def __build_id_to_VottImageTag(self, tag_db_cursor):
-        tag_id_to_VottImageTag = {}
-        try :
-            for row in tag_db_cursor:
-                logging.debug(row)
-                tag_id = row[0]
-                if tag_id in tag_id_to_VottImageTag:
-                    logging.debug("Existing ImageTag found, appending classification {0}".format(row[6]))
-                    tag_id_to_VottImageTag[tag_id].classification_names.append(row[6].strip())
-                else:
-                    logging.debug("No existing ImageTag found, creating new ImageTag: "
-                                  "id={0} x_min={1} x_max={2} x_min={3} x_max={4} classification={5} "
-                                  "image_height={6} image_width={7}"
-                                  .format(row[1], float(row[2]), float(row[3]), float(row[4]), float(row[5]),
-                                          [row[6].strip()], row[7], row[8]))
-                    tag_id_to_VottImageTag[tag_id] = VottImageTag(row[1], float(row[2]), float(row[3]),
-                                                                  float(row[4]), float(row[5]), [row[6].strip()],
-                                                                  row[7], row[8], row[9])
-        except Exception as e:
-            logging.error("An error occurred building VottImageTag dict: {0}".format(e))
-            raise
-        return tag_id_to_VottImageTag
+        return checked_out_images
 
 
     def get_existing_classifications(self):
@@ -557,6 +514,7 @@ class ImageTagDataAccess(object):
     # efficient with the nesting to avoid dupe bounding boxes per image
     def get_labels(self):        
         id_to_imagelabels = {}
+        conn = None
         try:
             conn = self._db_provider.get_connection()
             try:

@@ -10,7 +10,7 @@ from ..shared.db_access import ImageTagDataAccess
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
-    image_count = int(req.params.get('imageCount'))
+    image_count = req.params.get('imageCount')
     user_name = req.params.get('userName')
 
     # setup response object
@@ -32,21 +32,15 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     else:
         try:
             # DB configuration
+            image_count = int(image_count)
             data_access = ImageTagDataAccess(get_postgres_provider())
             user_id = data_access.create_user(user_name)
-            image_id_to_urls = data_access.get_images_for_tagging(image_count, user_id)
-            image_urls = list(image_id_to_urls.values())
-
-            image_id_to_image_tags = {}
-            for image_id in image_id_to_urls.keys():
-                image_id_to_image_tags[image_id] = data_access.get_image_tags(image_id)
-
-            existing_classifications_list = data_access.get_existing_classifications()
-
-            return_body_json = {"imageUrls": image_urls,
-                                "image_id_to_urls": image_id_to_urls,
-                                "image_id_to_image_tags": image_id_to_image_tags,
-                                "existing_classifications_list": existing_classifications_list}
+            
+            image_count = int(image_count)
+            image_id_to_tag_data = data_access.checkout_images(image_count, user_id)
+            return_body_json = {
+                "images": image_id_to_tag_data
+            }
 
             content = json.dumps(return_body_json)
             return func.HttpResponse(
