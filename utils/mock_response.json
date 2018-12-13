@@ -1,0 +1,24 @@
+[{"image_height": 483,
+    "image_width": 724,
+    "image_id": 199,
+    "imagelocation": "https://mock-storage.blob.core.windows.net/perm-images/199.JPG",
+    "labels": {
+        "classification_names": "knot",
+        "image_id": 199,
+        "x_min": 3.0,
+        "x_max": 9.0,
+        "y_min": 4.0,
+        "y_max": 7.0
+    }},
+    {"image_height": 483,
+    "image_width": 724,
+    "image_id": 211,
+    "imagelocation": "https://mock-storage.blob.core.windows.net/perm-images/211.JPG",
+    "labels": {
+        "classification_names": "defect",
+        "image_id": 211,
+        "x_min": 3.0,
+        "x_max": 9.0,
+        "y_min": 4.0,
+        "y_max": 7.0
+    }}]

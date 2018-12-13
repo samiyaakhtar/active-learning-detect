@@ -20,7 +20,6 @@ def __build_tag_from_VottImageTag(image_tag):
         "width": image_tag.image_width,
         "height": image_tag.image_height,
         "tags": [image_tag.classification_names],
-        "location": image_tag.image_location,
         "UID": __generate_uid(),
         "box": {
             "x1": image_tag.x_min,

@@ -4,6 +4,7 @@ import random
 from enum import IntEnum, unique
 import getpass
 import itertools
+import json
 from ..db_provider import DatabaseInfo, PostGresProvider
 
 
@@ -62,7 +63,13 @@ class ImageLabel(object):
     
     @staticmethod
     def fromJson(dictionary):
-        image_label = ImageLabel(dictionary["image_id"], dictionary["imagelocation"], dictionary["image_height"], dictionary["image_width"], [ImageTag.fromJson(label) for label in dictionary["labels"]], dictionary["user_folder"])
+        tags = []
+        if (isinstance(dictionary["labels"], dict)):
+            tags = [ImageTag.fromJson(dictionary["labels"])]
+        elif (isinstance(dictionary["labels"], list)):
+            tags = [ImageTag.fromJson(label) for label in dictionary["labels"]]
+
+        image_label = ImageLabel(dictionary["image_id"], dictionary["imagelocation"], dictionary["image_height"], dictionary["image_width"], tags, dictionary.get("user_folder"))
         return image_label
 
 
