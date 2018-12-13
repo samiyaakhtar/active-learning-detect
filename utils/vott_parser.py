@@ -126,10 +126,7 @@ def __get_id_from_fullpath(fullpath):
 def __create_tag_data_list(json_tag_list):
     processed_tags = []
     for json_tag in json_tag_list:
-        # Currently, tags from prediction_labels don't have a UID so they can't be 
-        # uploaded into the system.
-        if "UID" in json_tag:
-            processed_tags.append(__process_json_tag(json_tag))
+        processed_tags.append(__process_json_tag(json_tag))
     return processed_tags
 
 
