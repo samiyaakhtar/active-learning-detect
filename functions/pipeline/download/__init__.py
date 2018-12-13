@@ -2,7 +2,7 @@ import logging
 
 import azure.functions as func
 import json
-
+import jsonpickle
 from ..shared.db_provider import get_postgres_provider
 from ..shared.db_access import ImageTagDataAccess
 
@@ -37,11 +37,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             user_id = data_access.create_user(user_name)
             
             image_count = int(image_count)
-            image_id_to_tag_data = data_access.checkout_images(image_count, user_id)
+            checked_out_images = data_access.checkout_images(image_count, user_id)
             existing_classifications_list = data_access.get_existing_classifications()
 
             return_body_json = {
-                "images": image_id_to_tag_data,
+                "images": jsonpickle.encode(checked_out_images, unpicklable=False),
                 "classification_list": existing_classifications_list
             }
 

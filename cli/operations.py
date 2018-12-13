@@ -7,7 +7,8 @@ import pathlib
 import os
 from azure.storage.blob import BlockBlobService, ContentSettings
 from utils.blob_utils import BlobStorage
-from utils.vott_parser import process_vott_json, create_starting_vott_json, build_id_to_VottImageTag
+from utils.vott_parser import process_vott_json, create_starting_vott_json, build_id_to_VottImageTag, create_vott_json_from_image_labels
+from functions.pipeline.shared.db_access import ImageLabel, ImageTag
 
 DEFAULT_NUM_IMAGES = 40
 LOWER_LIMIT = 0
@@ -144,7 +145,8 @@ def download(config, num_images, strategy=None):
         parents=True,
         exist_ok=True
     )
-    vott_json, image_urls = _build_vott_json_from_raw_data(json_resp["images"], json_resp["classification_list"])
+    checkedout_image_labels = [ImageLabel.fromJson(item) for item in json.loads(json_resp["images"])]
+    vott_json, image_urls = create_vott_json_from_image_labels(checkedout_image_labels, json_resp["classification_list"])
 
     json_data = {'vott_json': vott_json,
                  'imageUrls': image_urls}
@@ -219,20 +221,4 @@ def upload(config):
 
     resp_json = response.json()
     print("Done!")
-
-
-def _build_vott_json_from_raw_data(rawdata, classification_list):
-    image_id_to_image_url = {}
-    image_id_to_image_tag = {}
-    for row in rawdata:
-        image_id = row[0]
-        image_id_to_image_url[image_id] = row[1]
-
-        if image_id not in image_id_to_image_tag:
-            image_id_to_image_tag[image_id] = []
-        image_id_to_image_tag[image_id].append(build_id_to_VottImageTag(row))
-
-    vott_json = create_starting_vott_json(image_id_to_image_url, image_id_to_image_tag, classification_list)
-
-    return vott_json, list(image_id_to_image_url.values())
 

@@ -4,6 +4,7 @@ import random
 from enum import IntEnum, unique
 import getpass
 import itertools
+import json
 from ..db_provider import DatabaseInfo, PostGresProvider
 
 
@@ -34,6 +35,11 @@ class ImageTag(object):
         self.y_min = y_min
         self.y_max = y_max
         self.classification_names = classification_names
+    
+    @staticmethod
+    def fromJson(dictionary):
+        image_tag = ImageTag(dictionary["image_id"], dictionary["x_min"], dictionary["x_max"], dictionary["y_min"], dictionary["y_max"], dictionary["classification_names"])
+        return image_tag
 
 #This class doesn't have box and image confidence because they are human curated labels
 class AnnotatedLabel(object):
@@ -54,6 +60,18 @@ class ImageLabel(object):
         self.image_width = image_width
         self.user_folder = user_folder
         self.labels = labels
+    
+    @staticmethod
+    def fromJson(dictionary):
+        tags = []
+        if (isinstance(dictionary["labels"], dict)):
+            tags = [ImageTag.fromJson(dictionary["labels"])]
+        elif (isinstance(dictionary["labels"], list)):
+            tags = [ImageTag.fromJson(label) for label in dictionary["labels"]]
+
+        image_label = ImageLabel(dictionary["image_id"], dictionary["imagelocation"], dictionary["image_height"], dictionary["image_width"], tags, dictionary.get("user_folder"))
+        return image_label
+
 
 class Tag(object):
     def __init__(self,classificationname, x_min: float, x_max: float, y_min: float, y_max: float):
@@ -237,45 +255,57 @@ class ImageTagDataAccess(object):
     def checkout_images(self, image_count, user_id):
         if type(image_count) is not int:
             raise TypeError('image_count must be an integer')
-        checked_out_images = []
+        image_id_to_image_labels = {}
         try:
             conn = self._db_provider.get_connection()
             try:
                 cursor = conn.cursor()
-                query = ("with pl as ( "
-                        "SELECT p.*, ci.classificationname  "
+                query = ("with pl AS ( "
+                        "SELECT p.*, ci.classificationname "
                         "FROM prediction_labels p "
                         "join classification_info ci on ci.classificationid = p.classificationid "
                         "WHERE trainingid = (select MAX(trainingid) From training_info) "
-                    ") "
-                    "select  "
+                        "), "
+                        "its AS ( "
+                        "SELECT s.imageid, ts.tagstatename, i.imagelocation,i.height,i.width "
+                        "FROM image_tagging_state s "
+                        "join image_info i on i.imageid = s.imageid "
+                        "join tag_state ts on ts.tagstateid = s.tagstateid "
+                        "WHERE s.tagstateid in ({0},{1}) LIMIT {2} "
+                        ") "
+                        "select "
                         "its.imageid, "
-                        "i.imagelocation, "
+                        "its.imagelocation, "
                         "pl.classificationid, "
                         "pl.classificationname, "
                         "pl.x_min, "
                         "pl.x_max, "
                         "pl.y_min, "
                         "pl.y_max, "
-                        "i.height, "
-                        "i.width, "
+                        "its.height, "
+                        "its.width, "
                         "pl.boxconfidence, "
                         "pl.imageconfidence, "
-                        "ts.tagstatename "
-                    "from image_tagging_state its  "
-                    "left outer join pl on its.imageid = pl.imageid "
-                    "join image_info i on i.imageid = its.imageid "
-                    "join tag_state ts on ts.tagstateid = its.tagstateid "
-                    "where  "
-                        "its.tagstateid in ({1}) "
-                    "limit {0}")
-                cursor.execute(query.format(image_count, ImageTagState.READY_TO_TAG))
+                        "its.tagstatename "
+                        "FROM its "
+                        "left outer join pl on its.imageid = pl.imageid")
+                cursor.execute(query.format(ImageTagState.READY_TO_TAG, ImageTagState.INCOMPLETE_TAG, image_count))
 
                 logging.debug("Got image tags back for image_count={0}".format(image_count))
-                # TODO: Optimize below two lines to simplify unique image ids, and improve the
-                # json output being returned, unflatten it
-                checked_out_images = list(cursor)
-                images_ids_to_update = list(set(row[0] for row in checked_out_images ))
+
+                for row in cursor:
+                    image_tag = {}
+                    # Handle the incomplete case
+                    if row[4] and row[5] and row[6] and row[7]:
+                        image_tag = ImageTag(row[0], float(row[4]), float(row[5]), float(row[6]), float(row[7]), row[3])
+                    if row[0] not in image_id_to_image_labels:
+                        image_label = ImageLabel(row[0], row[1], row[8], row[9], [image_tag])
+                        image_id_to_image_labels[row[0]] = image_label
+                    else:
+                        image_id_to_image_labels[row[0]].labels.append(image_tag)
+
+                logging.debug("Checked out images: " + str(image_id_to_image_labels))
+                images_ids_to_update = list(image_id_to_image_labels.keys())
                 self._update_images(images_ids_to_update, ImageTagState.TAG_IN_PROGRESS, user_id, conn)
             finally:
                 cursor.close()
@@ -284,7 +314,7 @@ class ImageTagDataAccess(object):
             raise
         finally:
             conn.close()
-        return checked_out_images
+        return list(image_id_to_image_labels.values())
 
 
     def get_existing_classifications(self):
@@ -545,7 +575,6 @@ class ImageTagDataAccess(object):
 
 class ArgumentException(Exception):
     pass
-
 
 def main():
     #################################################################
