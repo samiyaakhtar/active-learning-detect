@@ -253,50 +253,47 @@ class ImageTagDataAccess(object):
             conn = self._db_provider.get_connection()
             try:
                 cursor = conn.cursor()
-                query = ("with pl as ( "
-                        "SELECT p.*, ci.classificationname  "
+                query = ("with pl AS ( "
+                        "SELECT p.*, ci.classificationname "
                         "FROM prediction_labels p "
                         "join classification_info ci on ci.classificationid = p.classificationid "
                         "WHERE trainingid = (select MAX(trainingid) From training_info) "
-                    ") "
-                    "select  "
+                        "), "
+                        "its AS ( "
+                        "SELECT s.imageid, ts.tagstatename, i.imagelocation,i.height,i.width "
+                        "FROM image_tagging_state s "
+                        "join image_info i on i.imageid = s.imageid "
+                        "join tag_state ts on ts.tagstateid = s.tagstateid "
+                        "WHERE s.tagstateid in ({0},{1}) LIMIT {2} "
+                        ") "
+                        "select "
                         "its.imageid, "
-                        "i.imagelocation, "
+                        "its.imagelocation, "
                         "pl.classificationid, "
                         "pl.classificationname, "
                         "pl.x_min, "
                         "pl.x_max, "
                         "pl.y_min, "
                         "pl.y_max, "
-                        "i.height, "
-                        "i.width, "
+                        "its.height, "
+                        "its.width, "
                         "pl.boxconfidence, "
                         "pl.imageconfidence, "
-                        "ts.tagstatename "
-                    "from image_tagging_state its  "
-                    "left outer join pl on its.imageid = pl.imageid "
-                    "join image_info i on i.imageid = its.imageid "
-                    "join tag_state ts on ts.tagstateid = its.tagstateid "
-                    "where  "
-                        "its.tagstateid in ({0},{1}) ")
-                cursor.execute(query.format(ImageTagState.READY_TO_TAG, ImageTagState.INCOMPLETE_TAG))
+                        "its.tagstatename "
+                        "FROM its "
+                        "left outer join pl on its.imageid = pl.imageid")
+                cursor.execute(query.format(ImageTagState.READY_TO_TAG, ImageTagState.INCOMPLETE_TAG, image_count))
 
                 logging.debug("Got image tags back for image_count={0}".format(image_count))
-                # We have to enforce image_count outside of db query, because multiple tags
-                # may exist for the same image in prediction_labels
-                count = 0
+
                 for row in cursor:
                     image_tag = {}
                     # Handle the incomplete case
                     if row[4] and row[5] and row[6] and row[7]:
                         image_tag = ImageTag(row[0], float(row[4]), float(row[5]), float(row[6]), float(row[7]), row[3])
                     if row[0] not in image_id_to_image_labels:
-                        if count >= image_count:
-                            break
-
                         image_label = ImageLabel(row[0], row[1], row[8], row[9], [image_tag])
                         image_id_to_image_labels[row[0]] = image_label
-                        count = count + 1
                     else:
                         image_id_to_image_labels[row[0]].labels.append(image_tag)
 
