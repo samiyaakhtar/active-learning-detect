@@ -1,5 +1,7 @@
 import json
 from functions.pipeline.shared.db_access import ImageTag
+import string
+import random 
 
 # Vott tags have image height & width data as well.
 class VottImageTag(ImageTag):
@@ -17,8 +19,18 @@ def __build_tag_from_VottImageTag(image_tag):
         "y2": image_tag.y_max,
         "width": image_tag.image_width,
         "height": image_tag.image_height,
-        "tags": image_tag.classification_names,
-        "location": image_tag.image_location
+        "tags": [image_tag.classification_names],
+        "location": image_tag.image_location,
+        "UID": __generate_uid(),
+        "box": {
+            "x1": image_tag.x_min,
+            "x2": image_tag.x_max,
+            "y1": image_tag.y_min,
+            "y2": image_tag.y_max,
+        },
+        "type": "Rectangle",
+        "id": image_tag.image_id,
+        "name": 2
     }
 
 
@@ -121,6 +133,9 @@ def __create_tag_data_list(json_tag_list):
             processed_tags.append(__process_json_tag(json_tag))
     return processed_tags
 
+
+def __generate_uid(size=8, chars=string.ascii_lowercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))
 
 def __process_json_tag(json_tag):
     return {
