@@ -34,6 +34,11 @@ class ImageTag(object):
         self.y_min = y_min
         self.y_max = y_max
         self.classification_names = classification_names
+    
+    @staticmethod
+    def fromJson(dictionary):
+        image_tag = ImageTag(dictionary["image_id"], dictionary["x_min"], dictionary["x_max"], dictionary["y_min"], dictionary["y_max"], dictionary["classification_names"])
+        return image_tag
 
 #This class doesn't have box and image confidence because they are human curated labels
 class AnnotatedLabel(object):
@@ -54,6 +59,11 @@ class ImageLabel(object):
         self.image_width = image_width
         self.user_folder = user_folder
         self.labels = labels
+    
+    @staticmethod
+    def fromJson(dictionary):
+        image_label = ImageLabel(dictionary["image_id"], dictionary["imagelocation"], dictionary["image_height"], dictionary["image_width"], [ImageTag.fromJson(label) for label in dictionary["labels"]], dictionary["user_folder"])
+        return image_label
 
 
 class Tag(object):
@@ -276,7 +286,10 @@ class ImageTagDataAccess(object):
                 # may exist for the same image in prediction_labels
                 count = 0
                 for row in cursor:
-                    image_tag = ImageTag(row[0], float(row[4]), float(row[5]), float(row[6]), float(row[7]), row[3])
+                    image_tag = {}
+                    # Handle the incomplete case
+                    if row[4] and row[5] and row[6] and row[7]:
+                        image_tag = ImageTag(row[0], float(row[4]), float(row[5]), float(row[6]), float(row[7]), row[3])
                     if row[0] not in image_id_to_image_labels:
                         if count >= image_count:
                             break

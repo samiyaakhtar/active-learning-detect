@@ -2,7 +2,6 @@ import requests
 import time
 import shutil
 import json
-from collections import namedtuple 
 import copy
 import pathlib
 import os
@@ -146,7 +145,7 @@ def download(config, num_images, strategy=None):
         parents=True,
         exist_ok=True
     )
-    checkedout_image_labels = json.loads(json_resp["images"], object_hook=lambda d: namedtuple('ImageLabel', d.keys())(*d.values()))
+    checkedout_image_labels = [ImageLabel.fromJson(item) for item in json.loads(json_resp["images"])]
     vott_json, image_urls = create_vott_json_from_image_labels(checkedout_image_labels, json_resp["classification_list"])
 
     json_data = {'vott_json': vott_json,

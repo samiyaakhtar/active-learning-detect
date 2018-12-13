@@ -62,10 +62,10 @@ def create_vott_json_from_image_labels(image_labels, existing_classifications_li
         image_file_name = __get_filename_from_fullpath(label.imagelocation)
         image_urls.append(label.imagelocation)
         image_tags = []
-
         for tag in label.labels:
-            vott_image_tag = VottImageTag(label.image_id, tag.x_min, tag.x_max, tag.y_min, tag.y_max, tag.classification_names, label.image_height, label.image_width, label.imagelocation)
-            image_tags.append(__build_tag_from_VottImageTag(vott_image_tag))
+            if tag and tag.x_min and tag.x_max and tag.y_min and tag.y_max:
+                vott_image_tag = VottImageTag(label.image_id, tag.x_min, tag.x_max, tag.y_min, tag.y_max, tag.classification_names, label.image_height, label.image_width, label.imagelocation)
+                image_tags.append(__build_tag_from_VottImageTag(vott_image_tag))    
 
         frames[image_file_name] = image_tags
 
