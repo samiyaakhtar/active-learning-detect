@@ -8,7 +8,8 @@ from utils.blob_utils import BlobStorage
 import urllib.request
 import sys
 import time
-from functions.pipeline.shared.db_access import ImageTagState
+import jsonpickle
+from functions.pipeline.shared.db_access import ImageTagState, PredictionLabel
 
 CONFIG_PATH = os.environ.get('ALCONFIG', None)
 
@@ -92,6 +93,58 @@ def convert_labels_to_csv(data, tagging_output_file_path):
     except Exception as e:
         print("An error occurred attempting to write to file at {0}:\n\n{1}".format(tagging_output_file_path,e))
         raise
+
+def upload_data_post_training(training_id):
+    tagging_output_file_path =  os.path.expanduser(config.get('tagged_output'))
+    function_url = config.get("url") + "/api/classification"
+    query = {
+        "userName": config.get('tagging_user'),
+        "trainingId": training_id
+    }
+
+    # First, we need to get a mapping of class names to class ids
+    classes = ""
+    with open(tagging_output_file_path + "/tagged.csv") as f:
+        content = f.readlines()
+        for line in content:
+            class_name = line.strip().split(',')[1]
+            if class_name not in classes:
+                classes = classes + class_name + ","
+    
+    query["className"] = classes[:-1]
+    response = requests.get(function_url, params=query)
+    classification_name_to_class_id = response.json()
+    
+    # Now that we have a mapping, we create prediction labels in db
+    function_url = config.get("url") + "/api/labels"
+    payload_json = process_post_training_csv(tagging_output_file_path + "/tagged.csv", training_id, classification_name_to_class_id)
+    requests.post(function_url, params=query, json=payload_json)
+
+def process_post_training_csv(csv_path, training_id, classification_name_to_class_id):
+    payload_json = []
+    with open(csv_path) as f:
+        content = f.readlines()
+        count = 0
+        for line in content:
+            if count > 0:
+                csv_split = line.strip().split(',')
+                class_name = csv_split[1]
+                
+                if class_name in classification_name_to_class_id:
+                    prediction_label = PredictionLabel(training_id, 
+                                                    int(csv_split[0].split('.')[0]), 
+                                                    classification_name_to_class_id[class_name], 
+                                                    float(csv_split[2]), 
+                                                    float(csv_split[3]), 
+                                                    float(csv_split[4]), 
+                                                    float(csv_split[5]), 
+                                                    int(csv_split[6]), 
+                                                    int(csv_split[7]), 
+                                                    float(csv_split[8]), 
+                                                    float(csv_split[9]))
+                    payload_json.append(prediction_label)
+            count = count + 1
+    return jsonpickle.encode(payload_json, unpicklable=False)
 
 def get_image_name_from_url(image_url):
     start_idx = image_url.rfind('/')+1

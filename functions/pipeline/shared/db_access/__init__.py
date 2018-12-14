@@ -1,1 +1,1 @@
-from .db_access_v2 import ImageTagDataAccess, ImageTag, ImageInfo, ImageTagState, ImageLabel
+from .db_access_v2 import ImageTagDataAccess, ImageTag, ImageInfo, ImageTagState, ImageLabel, PredictionLabel

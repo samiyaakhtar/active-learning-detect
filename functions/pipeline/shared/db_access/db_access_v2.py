@@ -51,6 +51,7 @@ class AnnotatedLabel(object):
         self.y_max = y_max
         self.classification_id = classification_id
 
+
 # TODO: Think about moving all this schemas to a separate file 
 class ImageLabel(object):
     def __init__(self,image_id, imagelocation,image_height: int, image_width: int, labels: list, user_folder=None):
@@ -90,7 +91,6 @@ class PredictionLabel(AnnotatedLabel):
         self.image_width = image_width
         self.box_confidence = box_confidence
         self.image_confidence = image_confidence
-
 
 
 class ImageTagDataAccess(object):
@@ -316,6 +316,31 @@ class ImageTagDataAccess(object):
             conn.close()
         return list(image_id_to_image_labels.values())
 
+    def get_classification_mapping(self, classification_names):
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                classes_str = ""
+                for name in classification_names:
+                    classes_str = classes_str + "'" + name + "',"
+                classes_str = classes_str[:-1]
+
+                query = "SELECT classificationid, classificationname from classification_info where classificationname IN ({0}) order by classificationname asc"
+                cursor.execute(query.format(classes_str))
+                classification_mapping = {}
+                for row in cursor:
+                    classification_mapping[row[1]] = row[0]
+                logging.debug("Got back {0} classifications existing in db.".format(len(classification_mapping)))
+            finally:
+                cursor.close()
+        except Exception as e:
+            logging.error("An error occurred getting classifications from DB: {0}".format(e))
+            raise
+        finally:
+            conn.close()
+        return classification_mapping
+
 
     def get_existing_classifications(self):
         try:
@@ -515,6 +540,7 @@ class ImageTagDataAccess(object):
             raise TypeError('training id must be an integer')
 
         labels_length = len(prediction_labels)
+        logging.info("total predictions received = " + str(labels_length))
         try:
             conn = self._db_provider.get_connection()
             try:
@@ -523,10 +549,12 @@ class ImageTagDataAccess(object):
                 #Build query so we can insert all rows at once
                 for i in range(labels_length):
                     label = prediction_labels[i]
+                    logging.info("Reading label " + str(label))
                     query+="({0},{1},{2},{3},{4},{5},{6},{7},{8}) ".format(training_id,label.image_id,label.classification_id,
                                                                     label.x_min,label.x_max,label.y_min,label.y_max,
                                                                     label.box_confidence,label.image_confidence)
                     if i != labels_length-1: query+=","
+                logging.info("We built query: " + query)
                 cursor.execute(query)
                 #TODO: Update some sort of training status table?
                 #self._update_training_status(training_id,conn)
