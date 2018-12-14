@@ -540,7 +540,6 @@ class ImageTagDataAccess(object):
             raise TypeError('training id must be an integer')
 
         labels_length = len(prediction_labels)
-        logging.info("total predictions received = " + str(labels_length))
         try:
             conn = self._db_provider.get_connection()
             try:
@@ -549,12 +548,10 @@ class ImageTagDataAccess(object):
                 #Build query so we can insert all rows at once
                 for i in range(labels_length):
                     label = prediction_labels[i]
-                    logging.info("Reading label " + str(label))
                     query+="({0},{1},{2},{3},{4},{5},{6},{7},{8}) ".format(training_id,label.image_id,label.classification_id,
                                                                     label.x_min,label.x_max,label.y_min,label.y_max,
                                                                     label.box_confidence,label.image_confidence)
                     if i != labels_length-1: query+=","
-                logging.info("We built query: " + query)
                 cursor.execute(query)
                 #TODO: Update some sort of training status table?
                 #self._update_training_status(training_id,conn)
