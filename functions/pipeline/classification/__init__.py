@@ -11,7 +11,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     headers = {
         "content-type": "application/json"
     }
-
+    user_name = req.params.get('userName')
     classes_list = req.params.get("className")
     if not classes_list:
          return func.HttpResponse(
@@ -19,12 +19,20 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             headers=headers,
             body=json.dumps({"error": "invalid classes list given or omitted"})
         )
+    elif not user_name:
+        return func.HttpResponse(
+            status_code=401,
+            headers=headers,
+            body=json.dumps({"error": "invalid userName given or omitted"})
+        )
     try:
         # DB configuration
         data_access = ImageTagDataAccess(get_postgres_provider())
-        class_mapping = data_access.get_classification_mapping(classes_list.split(','))
+        user_id = data_access.create_user(user_name)
+
+        class_mapping = data_access.get_classification_map(set(classes_list.split(',')), user_id)
         logging.debug("Got classes mapping: " + str(class_mapping))
-        
+
         return func.HttpResponse(
                         status_code=200,
                         headers=headers,

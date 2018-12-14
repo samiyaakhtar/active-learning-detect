@@ -94,8 +94,7 @@ def convert_labels_to_csv(data, tagging_output_file_path):
         print("An error occurred attempting to write to file at {0}:\n\n{1}".format(tagging_output_file_path,e))
         raise
 
-def upload_data_post_training(training_id):
-    tagging_output_file_path =  os.path.expanduser(config.get('tagged_output'))
+def upload_data_post_training(prediction_output_file, training_id):
     function_url = config.get("url") + "/api/classification"
     query = {
         "userName": config.get('tagging_user')
@@ -103,7 +102,7 @@ def upload_data_post_training(training_id):
 
     # First, we need to get a mapping of class names to class ids
     classes = ""
-    with open(tagging_output_file_path + "/tagged.csv") as f:
+    with open(prediction_output_file) as f:
         content = f.readlines()
         for line in content:
             class_name = line.strip().split(',')[1]
@@ -120,33 +119,29 @@ def upload_data_post_training(training_id):
         "trainingId": training_id
     }
     function_url = config.get("url") + "/api/labels"
-    payload_json = process_post_training_csv(tagging_output_file_path + "/tagged.csv", training_id, classification_name_to_class_id)
+    payload_json = process_post_training_csv(prediction_output_file, training_id, classification_name_to_class_id)
     requests.post(function_url, params=query, json=payload_json)
 
 def process_post_training_csv(csv_path, training_id, classification_name_to_class_id):
     payload_json = []
     with open(csv_path) as f:
-        content = f.readlines()
-        count = 0
-        for line in content:
-            if count > 0:
-                csv_split = line.strip().split(',')
-                class_name = csv_split[1]
-                
-                if class_name in classification_name_to_class_id:
-                    prediction_label = PredictionLabel(training_id, 
-                                                    int(csv_split[0].split('.')[0]), 
-                                                    classification_name_to_class_id[class_name], 
-                                                    float(csv_split[2]), 
-                                                    float(csv_split[3]), 
-                                                    float(csv_split[4]), 
-                                                    float(csv_split[5]), 
-                                                    int(csv_split[6]), 
-                                                    int(csv_split[7]), 
-                                                    float(csv_split[8]), 
-                                                    float(csv_split[9]))
-                    payload_json.append(prediction_label)
-            count = count + 1
+        reader = csv.reader(f)
+        next(reader, None) #Skip header
+        for row in reader:
+            class_name = row[1]
+            if class_name in classification_name_to_class_id:
+                prediction_label = PredictionLabel(training_id, 
+                                                int(row[0].split('.')[0]), 
+                                                classification_name_to_class_id[class_name], 
+                                                float(row[2]), 
+                                                float(row[3]), 
+                                                float(row[4]), 
+                                                float(row[5]), 
+                                                int(row[6]), 
+                                                int(row[7]), 
+                                                float(row[8]), 
+                                                float(row[9]))
+                payload_json.append(prediction_label)
     return jsonpickle.encode(payload_json, unpicklable=False)
 
 def get_image_name_from_url(image_url):
