@@ -13,10 +13,10 @@ from functions.pipeline.shared.db_access import ImageTagState, PredictionLabel
 
 CONFIG_PATH = os.environ.get('ALCONFIG', None)
 
-def train(config, num_images):
+def train(config):
 
     # First, downloxad data necessary for training
-    training_data = download_data_for_training(config, num_images)
+    training_data = download_data_for_training(config)
 
     # Make sure directory is clean:
     file_location = Config.initialize_training_location(config)
@@ -48,12 +48,11 @@ def download_images(imageURLs, file_location):
     print("Downloaded images into " + file_location)
 
 
-def download_data_for_training(config, num_images):
+def download_data_for_training(config):
     print("Downloading data for training, this may take a few moments...")
-    # Download n images that are ready to tag
+    # Download all images to begin training
     query = {
         "userName": config.get('tagging_user'),
-        "imageCount": num_images,
         "tagStatus": [  int(ImageTagState.READY_TO_TAG),
                         int(ImageTagState.TAG_IN_PROGRESS),
                         int(ImageTagState.COMPLETED_TAG),
@@ -131,16 +130,16 @@ def process_post_training_csv(csv_path, training_id, classification_name_to_clas
             class_name = row[1]
             if class_name in classification_name_to_class_id:
                 prediction_label = PredictionLabel(training_id, 
-                                                int(row[0].split('.')[0]), 
-                                                classification_name_to_class_id[class_name], 
-                                                float(row[2]), 
-                                                float(row[3]), 
-                                                float(row[4]), 
-                                                float(row[5]), 
-                                                int(row[6]), 
-                                                int(row[7]), 
-                                                float(row[8]), 
-                                                float(row[9]))
+                                    int(row[0].split('.')[0]), 
+                                    classification_name_to_class_id[class_name], 
+                                    float(row[2]), 
+                                    float(row[3]), 
+                                    float(row[4]), 
+                                    float(row[5]), 
+                                    int(row[6]), 
+                                    int(row[7]), 
+                                    float(row[8]), 
+                                    float(row[9]))
                 payload_json.append(prediction_label)
     return jsonpickle.encode(payload_json, unpicklable=False)
 
@@ -148,10 +147,6 @@ def get_image_name_from_url(image_url):
     start_idx = image_url.rfind('/')+1
     return image_url[start_idx:]
 
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--num-images', type=int)
     config = Config.read_config(CONFIG_PATH)
-    args = parser.parse_args()
-    train(config, args.num_images)
+    train(config)

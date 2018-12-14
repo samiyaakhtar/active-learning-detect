@@ -25,12 +25,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             headers=headers,
             body=json.dumps({"error": "invalid userName given or omitted"})
         )
-    elif not image_count and tag_status:
-        return func.HttpResponse(
-            status_code=400,
-            headers=headers,
-            body=json.dumps({"error": "image count needs to be specified if tag status is specified"})
-        )
     elif not tag_status and not image_ids:
         return func.HttpResponse(
             status_code=400,
@@ -54,7 +48,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             if image_ids:
                 image_infos = data_access.get_image_info_for_image_ids(image_ids.split(','))
             elif tag_status:
-                image_count = int(image_count)
+                if image_count:
+                    image_count = int(image_count)
                 images_by_tag_status = data_access.get_images_by_tag_status(tag_status.split(','), image_count)
                 logging.debug("Received {0} images in tag status {1}".format(len(images_by_tag_status),tag_status))
                 image_infos = data_access.get_image_info_for_image_ids(list(images_by_tag_status.keys()))
