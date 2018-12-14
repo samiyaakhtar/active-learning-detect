@@ -22,17 +22,37 @@ def get_legacy_config(config_path: str) -> dict:
         print("An error occurred attempting to read to file at {0}:\n\n{1}".format(config_path,e))
         raise
 
-    result = {}
-    keys_we_care_about = ["data_dir","tagged_output","image_dir","filetype","classes"]
+    if legacy_config_file["user_folders"] == True:
+        raise IllegalArgumentError("Currently we do not support user folders. Change setting in {}".format(config_path))
+    
+    current_dir_path = os.path.dirname(os.path.abspath(__file__))
+    configured_path = legacy_config_file["python_file_directory"]
+    if os.path.abspath(configured_path) != current_dir_path:
+        msg = "Update 'python_file_directory' in {}".format(config_path)
+        raise IllegalArgumentError(msg)
+        
+    #TODO: Validate that the images we have match the filetype
+    #TODO: Make sure the classifications exist in the DB
+ 
+    keys_we_care_about = [
+        "data_dir", 
+        "tagged_output",
+        "tagging_output",
+        "image_dir",
+        "train_dir",
+        "filetype",
+        "classes",
+        "validation_output",
+        "untagged_output",
+        "inference_output_dir",
+        "python_file_directory"
+    ]
 
+    result = {}
     for key_name in keys_we_care_about:
         os.environ[key_name] = validate_value(legacy_config_file,key_name)   
         result[key_name] = os.path.expandvars(os.environ[key_name])
 
-    if legacy_config_file["user_folders"] == True:
-        raise IllegalArgumentError("Currently we do not support user folders. Change setting in {}".format(config_path))
-    #TODO: Validate that the images we have match the filetype
-    #TODO: Make sure the classifications exist in the DB
     return result
 
 if __name__ == "__main__":

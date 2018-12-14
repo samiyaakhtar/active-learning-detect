@@ -166,16 +166,15 @@ if __name__ == "__main__":
     classification_names = config_file["classes"].split(",")
     inference_graph_path = str(Path(config_file["inference_output_dir"])/"frozen_inference_graph.pb")
     supported_file_type = config_file["filetype"]
-    
+
     #TODO: Make sure $PYTHONPATH has this in it --> /opt/caffe/python:/opt/caffe2/build:
 
     #TODO: make sure tagged.csv exists
-    cur_tagged = None
-    cur_tagged = "../train/tagged.csv" #HACK: We expect this file to be in this script directory 
+    cur_tagged = config_file["tagged_output"]
 
     # These are the "tagging in progress" labels. Meaning they will have null labels and class names
-    cur_tagging = None
-    cur_tagging = "../train/tagging.csv" #HACK: We expect this file to be in this script directory 
+    # This file needs to exist even if it's empty
+    cur_tagging = config_file["tagging_output"] # This is a new config key we are adding for training V2
 
     logging.info("\n****Initializing TF Detector...****")
     cur_detector = TFDetector(classification_names, inference_graph_path)
