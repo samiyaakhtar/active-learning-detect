@@ -98,8 +98,7 @@ def upload_data_post_training(training_id):
     tagging_output_file_path =  os.path.expanduser(config.get('tagged_output'))
     function_url = config.get("url") + "/api/classification"
     query = {
-        "userName": config.get('tagging_user'),
-        "trainingId": training_id
+        "userName": config.get('tagging_user')
     }
 
     # First, we need to get a mapping of class names to class ids
@@ -116,6 +115,10 @@ def upload_data_post_training(training_id):
     classification_name_to_class_id = response.json()
     
     # Now that we have a mapping, we create prediction labels in db
+    query = {
+        "userName": config.get('tagging_user'),
+        "trainingId": training_id
+    }
     function_url = config.get("url") + "/api/labels"
     payload_json = process_post_training_csv(tagging_output_file_path + "/tagged.csv", training_id, classification_name_to_class_id)
     requests.post(function_url, params=query, json=payload_json)

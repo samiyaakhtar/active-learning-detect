@@ -48,8 +48,16 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 )
             elif req.method == "POST":
                 payload = json.loads(req.get_body())
+                training_id = req.params.get("trainingId")
+                if not training_id:
+                    return func.HttpResponse(
+                        status_code=401,
+                        headers=headers,
+                        body=json.dumps({"error": "invalid training_id given or omitted"})
+                    )
+                training_id = int(training_id)
                 payload_json = [namedtuple('PredictionLabel', item.keys())(*item.values()) for item in payload]
-                data_access.add_prediction_labels(payload_json, 1)
+                data_access.add_prediction_labels(payload_json, training_id)
                 return func.HttpResponse(
                     status_code=200,
                     headers=headers
