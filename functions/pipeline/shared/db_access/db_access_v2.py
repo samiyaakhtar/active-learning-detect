@@ -165,7 +165,6 @@ class ImageTagDataAccess(object):
             conn.close()
         return list(images_info)
 
-
     def checkout_images(self, image_count, user_id):
         if type(image_count) is not int:
             raise TypeError('image_count must be an integer')
@@ -229,7 +228,6 @@ class ImageTagDataAccess(object):
         finally:
             conn.close()
         return list(image_id_to_image_labels.values())
-
 
     def get_existing_classifications(self):
         try:
@@ -312,43 +310,6 @@ class ImageTagDataAccess(object):
                 logging.error("An errors occured updating image urls: {0}".format(e))
                 raise
             finally: conn.close()
-
-    #TODO: Do safer query string formatting
-    def update_tagged_images(self,list_of_image_tags, user_id):
-        if(not list_of_image_tags):
-            return
-
-        if type(user_id) is not int:
-            raise TypeError('user id must be an integer')
-
-        groups_by_image_id = itertools.groupby(list_of_image_tags, key=lambda it:it.image_id)
-        try:
-            conn = self._db_provider.get_connection()
-            try:
-                cursor = conn.cursor()
-                for img_id, list_of_tags in groups_by_image_id:
-                    for img_tag in list(list_of_tags):
-                        query = ("with iti AS ( "
-                                "INSERT INTO image_tags (ImageId, X_Min,X_Max,Y_Min,Y_Max,CreatedByUser) "
-                                "VALUES ({0},{1},{2},{3},{4},{5}) "
-                                "RETURNING ImageTagId), "
-                                "ci AS ( "
-                                    "INSERT INTO classification_info (ClassificationName) "
-                                    "VALUES {6} "
-                                    "ON CONFLICT (ClassificationName) DO UPDATE SET ClassificationName=EXCLUDED.ClassificationName "
-                                    "RETURNING (SELECT iti.ImageTagId FROM iti), ClassificationId) "
-                                "INSERT INTO tags_classification (ImageTagId,ClassificationId) "
-                                "SELECT imagetagid,classificationid from ci;")
-                        classifications = ", ".join("('{0}')".format(name) for name in img_tag.classification_names)
-                        cursor.execute(query.format(img_tag.image_id,img_tag.x_min,img_tag.x_max,img_tag.y_min,img_tag.y_max,user_id,classifications))
-                    self._update_images([img_id],ImageTagState.COMPLETED_TAG,user_id,conn)
-                    conn.commit()
-                logging.debug("Updated {0} image tags".format(len(list_of_image_tags)))
-            finally: cursor.close()
-        except Exception as e:
-            logging.error("An errors occured updating tagged image: {0}".format(e))
-            raise
-        finally: conn.close()
 
     def get_classification_map(self, class_names: set, user_id: int) -> dict:
         class_to_id = {}
