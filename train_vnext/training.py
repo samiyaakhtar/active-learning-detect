@@ -25,7 +25,8 @@ def train(config):
     download_images(training_data["imageURLs"], config.get('training_image_dir'))
 
     # create csv file from this data
-    convert_labels_to_csv(training_data["taggedLabelData"],config.get('tagged_output'))
+    convert_tagged_labels_to_csv(training_data["taggedLabelData"],config.get('tagged_output'))
+    convert_tagging_labels_to_csv(training_data["taggingLabelData"], config.get('tagging_output'))
 
 
 def download_images(imageURLs, file_location): 
@@ -70,16 +71,32 @@ def download_data_for_training(config):
     response = requests.get(url, params=query)
     tagged_label_data = response.json()
 
+    tagging_image_data = set([item['name'] for item in all_images_json if item['tagstate'] == ImageTagState.TAG_IN_PROGRESS])
     return { "imageURLs": image_urls_to_download,
-             "taggedLabelData": tagged_label_data }
+             "taggedLabelData": tagged_label_data,
+             "taggingLabelData": tagging_image_data }
 
-def convert_labels_to_csv(data, tagging_output_file_path):
+def convert_tagging_labels_to_csv(filenames, tagging_output_file_path):
     try:
         if not os.path.exists(tagging_output_file_path):
             dir_name = os.path.dirname(tagging_output_file_path)
             if not os.path.exists(dir_name):
                 os.makedirs(dir_name)
         with open(tagging_output_file_path, 'w') as csvfile:
+            for img in filenames:
+                csvfile.write(img + '\n')
+        print("Created tagging csv file: " + tagging_output_file_path)
+    except Exception as e:
+        print("An error occurred attempting to write to file at {0}:\n\n{1}".format(tagging_output_file_path,e))
+        raise
+
+def convert_tagged_labels_to_csv(data, tagged_output_file_path):
+    try:
+        if not os.path.exists(tagged_output_file_path):
+            dir_name = os.path.dirname(tagged_output_file_path)
+            if not os.path.exists(dir_name):
+                os.makedirs(dir_name)
+        with open(tagged_output_file_path, 'w') as csvfile:
             filewriter = csv.writer(csvfile, delimiter=',',quotechar='|', quoting=csv.QUOTE_MINIMAL)
             filewriter.writerow(['filename','class','xmin','xmax','ymin','ymax','height','width'])   
             for img in data:
@@ -89,8 +106,9 @@ def convert_labels_to_csv(data, tagging_output_file_path):
                 for label in img["labels"]:
                     data = [imagelocation, label["classificationname"], label['x_min'], label['x_max'], label['y_min'], label['y_max'], image_height, image_width]
                     filewriter.writerow(data)
+        print("Created tagged csv file: " + tagged_output_file_path)
     except Exception as e:
-        print("An error occurred attempting to write to file at {0}:\n\n{1}".format(tagging_output_file_path,e))
+        print("An error occurred attempting to write to file at {0}:\n\n{1}".format(tagged_output_file_path,e))
         raise
 
 def upload_data_post_training(prediction_output_file, training_id):

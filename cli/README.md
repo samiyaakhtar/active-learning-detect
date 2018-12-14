@@ -27,6 +27,7 @@ TAGGING_LOCATION=~/taggingdata
 TAGGING_USER="bhargav"
 TAGGING_IMAGE_DIR=${TAGGING:TAGGING_LOCATION}/AllImages
 TAGGED_OUTPUT=${TAGGING:TAGGING_LOCATION}/tagged.csv
+TAGGING_OUTPUT=${TAGGING:TAGGING_LOCATION}/tagging.csv
 ```
 
 `FUNCTIONS_KEY` is the Azure Functions Key that allows your CLI to authenticate with the management function

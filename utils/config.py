@@ -21,6 +21,7 @@ TRAINING_SECTION = 'TRAINING'
 TRAINING_LOCATION_KEY = 'TRAINING_LOCATION'
 TRAINING_IMAGE_DIR_KEY='TRAINING_IMAGE_DIR'
 TAGGED_OUTPUT_KEY='TAGGED_OUTPUT'
+TAGGING_OUTPUT_KEY='TAGGING_OUTPUT'
 
 class Config():
     @staticmethod
@@ -61,11 +62,12 @@ class Config():
         training_image_dir = training_config_section.get(TRAINING_IMAGE_DIR_KEY)
         tagged_output = training_config_section.get(TAGGED_OUTPUT_KEY)
         training_location = training_config_section.get(TRAINING_LOCATION_KEY)
+        tagging_output = training_config_section.get(TAGGING_OUTPUT_KEY)
 
         if not training_image_dir or not tagged_output or not training_location:
             raise MissingConfigException()
 
-        return training_image_dir, tagged_output, training_location
+        return training_image_dir, tagged_output, training_location, tagging_output
 
     @staticmethod
     def functions_config_section(functions_config_section):
@@ -103,7 +105,7 @@ class Config():
 
         tagging_location, tagging_user = Config.tagging_config_section(parser[TAGGING_SECTION])
 
-        training_image_dir, tagged_output, training_location = Config.training_config_section(parser[TRAINING_SECTION])
+        training_image_dir, tagged_output, training_location, tagging_output = Config.training_config_section(parser[TRAINING_SECTION])
 
         return {
             "key": functions_key,
@@ -115,7 +117,8 @@ class Config():
             "tagging_user": tagging_user,
             "training_location": training_location,
             "training_image_dir": training_image_dir,
-            "tagged_output": tagged_output
+            "tagged_output": tagged_output,
+            "tagging_output": tagging_output
         }
 
     @staticmethod
