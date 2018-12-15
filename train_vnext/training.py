@@ -3,8 +3,9 @@ import os
 import csv
 import requests
 from azure.storage.blob import BlockBlobService, ContentSettings
-from utils.config import Config
 from utils.blob_utils import BlobStorage
+from utils.config import Config
+from .validate_config import get_legacy_config, initialize_training_location
 import urllib.request
 import sys
 import time
@@ -13,16 +14,16 @@ from functions.pipeline.shared.db_access import ImageTagState, PredictionLabel
 
 CONFIG_PATH = os.environ.get('ALCONFIG', None)
 
-def train(config):
+def train(config, user_name, function_url):
 
     # First, downloxad data necessary for training
-    training_data = download_data_for_training(config)
+    training_data = download_data_for_training(config, user_name, function_url)
 
     # Make sure directory is clean:
-    file_location = Config.initialize_training_location(config)
+    file_location = initialize_training_location(config)
 
     # Grab tagged and totag images from the blob storage
-    download_images(training_data["imageURLs"], config.get('training_image_dir'))
+    download_images(training_data["imageURLs"], config.get('image_dir'))
 
     # create csv file from this data
     convert_tagged_labels_to_csv(training_data["taggedLabelData"],config.get('tagged_output'))
@@ -49,17 +50,17 @@ def download_images(imageURLs, file_location):
     print("Downloaded images into " + file_location)
 
 
-def download_data_for_training(config):
+def download_data_for_training(config, user_name, function_url):
     print("Downloading data for training, this may take a few moments...")
     # Download all images to begin training
     query = {
-        "userName": config.get('tagging_user'),
+        "userName": user_name,
         "tagStatus": [  int(ImageTagState.READY_TO_TAG),
                         int(ImageTagState.TAG_IN_PROGRESS),
                         int(ImageTagState.COMPLETED_TAG),
                         int(ImageTagState.INCOMPLETE_TAG)]
     }
-    url = config.get('url') + '/api/images'
+    url = function_url + '/api/images'
     response = requests.get(url, params=query)
     all_images_json = response.json()
     image_urls_to_download = [info['location'] for info in all_images_json]
@@ -67,7 +68,7 @@ def download_data_for_training(config):
     # Download upto 200 images that have been tagged, for training
     query['tagStatus'] = ImageTagState.COMPLETED_TAG
     query['imageCount'] = 200
-    url = config.get('url') + '/api/labels'
+    url = function_url + '/api/labels'
     response = requests.get(url, params=query)
     tagged_label_data = response.json()
 
@@ -111,10 +112,10 @@ def convert_tagged_labels_to_csv(data, tagged_output_file_path):
         print("An error occurred attempting to write to file at {0}:\n\n{1}".format(tagged_output_file_path,e))
         raise
 
-def upload_data_post_training(prediction_output_file, training_id):
-    function_url = config.get("url") + "/api/classification"
+def upload_data_post_training(prediction_output_file, training_id, user_name,function_url):
+    function_url = function_url + "/api/classification"
     query = {
-        "userName": config.get('tagging_user')
+        "userName": user_name
     }
 
     # First, we need to get a mapping of class names to class ids
@@ -132,10 +133,10 @@ def upload_data_post_training(prediction_output_file, training_id):
     
     # Now that we have a mapping, we create prediction labels in db
     query = {
-        "userName": config.get('tagging_user'),
+        "userName": user_name,
         "trainingId": training_id
     }
-    function_url = config.get("url") + "/api/labels"
+    function_url = function_url + "/api/labels"
     payload_json = process_post_training_csv(prediction_output_file, training_id, classification_name_to_class_id)
     requests.post(function_url, params=query, json=payload_json)
 
@@ -166,5 +167,9 @@ def get_image_name_from_url(image_url):
     return image_url[start_idx:]
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--config-file', required=True)
+    args = parser.parse_args()
+    legacy_config = get_legacy_config(args.config_file)
     config = Config.read_config(CONFIG_PATH)
-    train(config)
+    train(legacy_config, config.get("tagging_user"), config.get("url"))

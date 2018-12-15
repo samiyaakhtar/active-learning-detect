@@ -1,12 +1,26 @@
 import os
 import sys
 from pathlib import Path
+import pathlib
+import shutil
 path = os.path.join(os.path.dirname(__file__), os.pardir)
 sys.path.append(path)
 from utils.config import Config
 
 class IllegalArgumentError(ValueError):
     pass
+
+def initialize_training_location(config):
+        file_tree = pathlib.Path(os.path.expanduser(
+            config.get("train_dir"))
+        )
+
+        if file_tree.exists():
+            print("Removing existing tag data directory: " + str(file_tree))
+
+            shutil.rmtree(str(file_tree), ignore_errors=True)
+
+        return pathlib.Path(file_tree)
 
 def validate_value(config: dict, key_name: str):
     return_val = config[key_name]
