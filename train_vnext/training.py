@@ -14,20 +14,20 @@ from functions.pipeline.shared.db_access import ImageTagState, PredictionLabel
 
 CONFIG_PATH = os.environ.get('ALCONFIG', None)
 
-def train(config, user_name, function_url):
+def train(legacy_config, user_name, function_url):
 
     # First, downloxad data necessary for training
-    training_data = download_data_for_training(config, user_name, function_url)
+    training_data = download_data_for_training(user_name, function_url)
 
     # Make sure directory is clean:
-    file_location = initialize_training_location(config)
+    file_location = initialize_training_location(legacy_config)
 
     # Grab tagged and totag images from the blob storage
-    download_images(training_data["imageURLs"], config.get('image_dir'))
+    download_images(training_data["imageURLs"], legacy_config.get('image_dir'))
 
     # create csv file from this data
-    convert_tagged_labels_to_csv(training_data["taggedLabelData"],config.get('tagged_output'))
-    convert_tagging_labels_to_csv(training_data["taggingLabelData"], config.get('tagging_output'))
+    convert_tagged_labels_to_csv(training_data["taggedLabelData"],legacy_config.get('tagged_output'))
+    convert_tagging_labels_to_csv(training_data["taggingLabelData"], legacy_config.get('tagging_output'))
 
 
 def download_images(imageURLs, file_location): 
@@ -50,7 +50,7 @@ def download_images(imageURLs, file_location):
     print("Downloaded images into " + file_location)
 
 
-def download_data_for_training(config, user_name, function_url):
+def download_data_for_training(user_name, function_url):
     print("Downloading data for training, this may take a few moments...")
     # Download all images to begin training
     query = {
