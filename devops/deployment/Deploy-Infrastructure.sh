@@ -61,6 +61,13 @@ if [[ $query_result =~ $DATABASE_SERVER_NAME ]] && ! $DEPLOY_POSTGRES_SERVER;
 then
     echo && echo "Skipping deployment of PostgreSQL server $DATABASE_SERVER_NAME" && echo
 else
+    #First see if the postgres server exists. 
+    ps_query_result=$(az postgres server list -g $RESOURCE_GROUP --query "[?name=='$DATABASE_SERVER_NAME'].name")
+    if [[ $ps_query_result =~ $DATABASE_SERVER_NAME ]];
+    then
+        echo "Postgres server $DATABASE_SERVER_NAME already exists. Removing..."
+        az postgres server delete -g $RESOURCE_GROUP -n $DATABASE_SERVER_NAME -y
+    fi
     echo "Entering deployment of PostgreSQL server $DATABASE_SERVER_NAME"
     . ./Deploy-Postgres-DB.sh $RESOURCE_GROUP $DATABASE_SERVER_NAME "$DATABASE_USERNAME" $DATABASE_PASSWORD
     if [ "$?" -ne 0 ]; then
