@@ -1,8 +1,6 @@
 
 import configparser
-import pathlib
 import os
-import shutil
 
 FUNCTIONS_SECTION = 'FUNCTIONS'
 FUNCTIONS_KEY = 'FUNCTIONS_KEY'
@@ -16,11 +14,6 @@ STORAGE_CONTAINER = 'STORAGE_CONTAINER'
 TAGGING_SECTION = 'TAGGING'
 TAGGING_LOCATION_KEY = 'TAGGING_LOCATION'
 TAGGING_USER_KEY = 'TAGGING_USER'
-
-TRAINING_SECTION = 'TRAINING'
-TRAINING_LOCATION_KEY = 'TRAINING_LOCATION'
-TRAINING_IMAGE_DIR_KEY='TRAINING_IMAGE_DIR'
-TAGGED_OUTPUT_KEY='TAGGED_OUTPUT'
 
 class Config():
     @staticmethod
@@ -55,17 +48,6 @@ class Config():
             raise MissingConfigException()
 
         return tagging_location_value, tagging_user_value
-        
-    @staticmethod
-    def training_config_section(training_config_section):
-        training_image_dir = training_config_section.get(TRAINING_IMAGE_DIR_KEY)
-        tagged_output = training_config_section.get(TAGGED_OUTPUT_KEY)
-        training_location = training_config_section.get(TRAINING_LOCATION_KEY)
-
-        if not training_image_dir or not tagged_output or not training_location:
-            raise MissingConfigException()
-
-        return training_image_dir, tagged_output, training_location
 
     @staticmethod
     def functions_config_section(functions_config_section):
@@ -90,9 +72,6 @@ class Config():
         if TAGGING_SECTION not in sections:
             raise MissingConfigException()
 
-        if TRAINING_SECTION not in sections:
-            raise MissingConfigException()
-
         functions_key, functions_url = Config.functions_config_section(
             parser[FUNCTIONS_SECTION]
         )
@@ -103,8 +82,6 @@ class Config():
 
         tagging_location, tagging_user = Config.tagging_config_section(parser[TAGGING_SECTION])
 
-        training_image_dir, tagged_output, training_location = Config.training_config_section(parser[TRAINING_SECTION])
-
         return {
             "key": functions_key,
             "url": functions_url,
@@ -112,10 +89,7 @@ class Config():
             "storage_key": storage_key,
             "storage_container": storage_container,
             "tagging_location": tagging_location,
-            "tagging_user": tagging_user,
-            "training_location": training_location,
-            "training_image_dir": training_image_dir,
-            "tagged_output": tagged_output
+            "tagging_user": tagging_user
         }
 
     @staticmethod
@@ -128,18 +102,6 @@ class Config():
         parser.read(config_path)
         return Config.read_config_with_parsed_config(parser)
 
-    @staticmethod
-    def initialize_training_location(config):
-        file_tree = pathlib.Path(os.path.expanduser(
-            config.get("training_location"))
-        )
-
-        if file_tree.exists():
-            print("Removing existing tag data directory: " + str(file_tree))
-
-            shutil.rmtree(str(file_tree), ignore_errors=True)
-
-        return pathlib.Path(file_tree)
 
 class MissingConfigException(Exception):
     pass

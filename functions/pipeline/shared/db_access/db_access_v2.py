@@ -143,7 +143,7 @@ class ImageTagDataAccess(object):
                 for id in image_ids:
                     ids += str(id) + ','
                 ids = ids[:-1]
-                query = ("select imageid, originalimagename, imagelocation, height, width, createdbyuser from image_info where imageid IN ({0});")
+                query = ("select a.imageid, a.originalimagename, a.imagelocation, a.height, a.width, a.createdbyuser, b.TagStateId from image_info a LEFT JOIN Image_Tagging_State b ON a.imageid = b.imageid where a.imageid IN ({0});")
                 cursor.execute(query.format(ids))
                 logging.debug("Got image info back for image_id={}".format(image_ids))
 
@@ -155,6 +155,7 @@ class ImageTagDataAccess(object):
                     info['name'] = row[1]
                     info['location'] = row[2]
                     info['id'] = row[0]
+                    info['tagstate'] = row[6]
                     images_info.append(info)
             finally:
                 cursor.close()
