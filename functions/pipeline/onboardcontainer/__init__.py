@@ -99,7 +99,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 logging.info("Blob object not supported. Object URL={}".format(blob_url.as_uri))
 
         return func.HttpResponse(
-            status_code=200,
+            status_code=202,
             headers=DEFAULT_RETURN_HEADER,
             body=json.dumps(blob_list)
         )

@@ -30,8 +30,9 @@ class ImageTag(object):
     
     @staticmethod
     def fromJson(dictionary):
-        image_tag = ImageTag(dictionary["image_id"], dictionary["x_min"], dictionary["x_max"], dictionary["y_min"], dictionary["y_max"], dictionary["classification_names"])
-        return image_tag
+        if dictionary.items():
+            image_tag = ImageTag(dictionary["image_id"], dictionary["x_min"], dictionary["x_max"], dictionary["y_min"], dictionary["y_max"], dictionary["classification_names"])
+            return image_tag
 
 #This class doesn't have box and image confidence because they are human curated labels
 class AnnotatedLabel(object):
@@ -82,3 +83,10 @@ class PredictionLabel(AnnotatedLabel):
         self.image_width = image_width
         self.box_confidence = box_confidence
         self.image_confidence = image_confidence
+
+class TrainingSession(object):
+    def __init__(self, description, model_url, avg_perf: float, class_perf: dict):
+        self.description = description
+        self.model_url = model_url
+        self.avg_perf = avg_perf
+        self.class_perf = class_perf 

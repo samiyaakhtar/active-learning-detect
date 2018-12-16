@@ -42,6 +42,9 @@ python object_detection/builders/model_builder_test.py
 echo -e '\n*******\tClone Active Learning\t*******\n'
 git clone https://github.com/CatalystCode/active-learning-detect
 
+echo -e '\n*******\tInstalling Python Packages\t*******\n'
+cd repos/models/research/active-learning-detect
+pip install -r requirements.txt
 
 #Update the config.ini file at repos/models/research/active-learning-detect
 echo -e 'Objection dectection install validation complete'

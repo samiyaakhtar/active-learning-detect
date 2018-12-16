@@ -30,24 +30,28 @@ def train(legacy_config, user_name, function_url):
     convert_tagging_labels_to_csv(training_data["taggingLabelData"], legacy_config.get('tagging_output'))
 
 
-def download_images(imageURLs, file_location): 
-    file_location = os.path.expanduser(file_location)
-    print("Downloading images to " + file_location + ", this may take a few seconds...")
-    # Download tagged images into tagged folder
-    if not os.path.exists(file_location):
-        os.makedirs(file_location)
+def download_images(image_urls, folder_location): 
+    folder_location = os.path.expanduser(folder_location)
+    print("Syncing images to " + folder_location)
+
+    if not os.path.exists(folder_location):
+        print("Directory doesn't exist so downloading all images may take a few minutes...")
+        os.makedirs(folder_location)
+
+    existing_files = {os.path.relpath(os.path.join(directory, cur_file), folder_location) for (directory, _, filenames) 
+        in os.walk(folder_location) for cur_file in filenames}
+
     try:
-        for image in imageURLs:
-            filename = get_image_name_from_url(image)
-            location = image
-            # extension = location.split('.')[-1]
-            with urllib.request.urlopen(location) as response, open(file_location + '/' + str(filename), 'wb') as out_file:
-                data = response.read() # a `bytes` object
-                out_file.write(data)      
+        for image_url in image_urls:
+            file_name = get_image_name_from_url(image_url)
+            if file_name not in existing_files:
+                with urllib.request.urlopen(image_url) as response, open(folder_location + '/' + str(file_name), 'wb') as out_file:
+                    data = response.read() # a `bytes` object
+                    out_file.write(data)      
     except Exception as e:
-        print("An error occurred attempting to download image at {0}:\n\n{1}".format(image,e))
+        print("An error occurred attempting to download image at {0}:\n\n{1}".format(image_url,e))
         raise
-    print("Downloaded images into " + file_location)
+    print("Synced images into " + folder_location)
 
 
 def download_data_for_training(user_name, function_url):
@@ -72,7 +76,7 @@ def download_data_for_training(user_name, function_url):
     response = requests.get(url, params=query)
     tagged_label_data = response.json()
 
-    tagging_image_data = set([item['name'] for item in all_images_json if item['tagstate'] == ImageTagState.TAG_IN_PROGRESS])
+    tagging_image_data = set([get_image_name_from_url(item['location']) for item in all_images_json if item['tagstate'] == ImageTagState.TAG_IN_PROGRESS])
     return { "imageURLs": image_urls_to_download,
              "taggedLabelData": tagged_label_data,
              "taggingLabelData": tagging_image_data }

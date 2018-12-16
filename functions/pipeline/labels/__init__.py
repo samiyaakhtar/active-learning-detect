@@ -59,7 +59,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 payload_json = [namedtuple('PredictionLabel', item.keys())(*item.values()) for item in payload]
                 data_access.add_prediction_labels(payload_json, training_id)
                 return func.HttpResponse(
-                    status_code=200,
+                    status_code=201,
                     headers=headers
                 )
         except Exception as e:

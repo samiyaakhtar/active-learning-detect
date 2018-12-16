@@ -71,24 +71,22 @@ def main(msg: func.QueueMessage) -> None:
 
         image_bytes = response.read()
 
-        blob_create_response = blob_service.create_blob_from_bytes(copy_destination, new_blob_name, image_bytes)
+        # Per Azure notes https://docs.microsoft.com/en-us/azure/storage/blobs/storage-properties-metadata:
+        # The name of your metadata must conform to the naming conventions for C# identifiers. Dashes do not work.
+        # Azure blob is also setting the keys to full lowercase.
+        blob_metadata = {
+            "userFilePath": original_file_directory,
+            "originalFilename": original_filename,
+            "uploadUser": user_name
+        }
+
+        blob_create_response = blob_service.create_blob_from_bytes(copy_destination, new_blob_name, image_bytes, metadata=blob_metadata)
         update_urls_dictionary = {image_id: blob_service.make_blob_url(copy_destination, new_blob_name)}
 
         # Otherwise, dictionary contains permanent image URLs for each image ID that was successfully copied.
         if not blob_create_response:
             logging.error("ERROR: Image copy/delete operation failed. Check state of images in storage.")
         else:
-            # Per Azure notes https://docs.microsoft.com/en-us/azure/storage/blobs/storage-properties-metadata:
-            # The name of your metadata must conform to the naming conventions for C# identifiers. Dashes do not work.
-            # Azure blob is also setting the keys to full lowercase.
-            blob_service.set_blob_metadata(container_name=copy_destination,
-                                           blob_name=new_blob_name,
-                                           metadata={
-                                               "userFilePath": original_file_directory,
-                                               "originalFilename": original_filename,
-                                               "uploadUser": user_name
-                                            })
-
             logging.debug("Now updating permanent URLs in the DB...")
             data_access.update_image_urls(update_urls_dictionary, user_id)
 

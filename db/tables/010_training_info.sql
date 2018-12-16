@@ -1,7 +1,7 @@
 CREATE TABLE Training_Info (
     TrainingId SERIAL PRIMARY KEY,
     TrainingDescription text,
-    ModelLocation text NOT NULL,
+    ModelLocation text NOT NULL UNIQUE,
     ClassPerfAvg decimal(6,5) NOT NULL,
     --Consider additional metadata like a path to zip file
     --containing the pipeline.config, model, etc.

@@ -42,7 +42,7 @@ def get_legacy_config(config_path: str) -> dict:
     current_dir_path = os.path.dirname(os.path.abspath(__file__))
     configured_path = legacy_config_file["python_file_directory"]
     if os.path.abspath(configured_path) != current_dir_path:
-        msg = "Update 'python_file_directory' in {}".format(config_path)
+        msg = "Expected 'python_file_directory' to be {}".format(current_dir_path)
         raise IllegalArgumentError(msg)
         
     #TODO: Validate that the images we have match the filetype

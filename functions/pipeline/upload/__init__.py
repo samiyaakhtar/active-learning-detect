@@ -38,11 +38,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             if ids_to_tags[image_id]:
                 all_imagetags.extend(__create_ImageTag_list(image_id, ids_to_tags[image_id]))
 
-        logging.info("Update all visited images with tags and set state to completed")
         unique_class_names = upload_data["uniqueClassNames"]
-        class_map = data_access.get_classification_map(unique_class_names,user_id)
-        annotated_labels = data_access.convert_to_annotated_label(all_imagetags,class_map)
-        data_access.update_tagged_images_v2(annotated_labels,user_id)
+        if all_imagetags and unique_class_names:
+            logging.info("Update all visited images with tags and set state to completed")        
+            class_map = data_access.get_classification_map(unique_class_names,user_id)
+            annotated_labels = data_access.convert_to_annotated_label(all_imagetags,class_map)
+            data_access.update_tagged_images_v2(annotated_labels,user_id)
+        else:
+            logging.info("No tagged image ids or classifications received")
 
         logging.info("Update visited but no tags identified images")
         data_access.update_completed_untagged_images(upload_data["imagesVisitedNoTag"], user_id)
@@ -52,7 +55,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         return func.HttpResponse(
             body=json.dumps(upload_data),
-            status_code=200,
+            status_code=201,
             headers={ "content-type": "application/json"},
         )
     except Exception as e:

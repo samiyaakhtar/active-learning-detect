@@ -123,7 +123,8 @@ def download(config, num_images, strategy=None):
     response.raise_for_status()
 
     json_resp = response.json()
-    count = len(json_resp['images'])
+    images_json = json.loads(json_resp["images"])
+    count = len(images_json)
 
     print("Received " + str(count) + " files.")
     
@@ -145,7 +146,7 @@ def download(config, num_images, strategy=None):
         parents=True,
         exist_ok=True
     )
-    checkedout_image_labels = [ImageLabel.fromJson(item) for item in json.loads(json_resp["images"])]
+    checkedout_image_labels = [ImageLabel.fromJson(item) for item in images_json]
     vott_json, image_urls = create_vott_json_from_image_labels(checkedout_image_labels, json_resp["classification_list"])
 
     json_data = {'vott_json': vott_json,
@@ -221,4 +222,3 @@ def upload(config):
 
     resp_json = response.json()
     print("Done!")
-

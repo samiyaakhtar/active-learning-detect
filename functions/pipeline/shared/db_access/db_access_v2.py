@@ -5,7 +5,7 @@ import getpass
 import itertools
 import json
 from ..db_provider import DatabaseInfo, PostGresProvider
-from .models import ImageTag, ImageLabel, ImageTagState, AnnotatedLabel, Tag, ImageInfo, PredictionLabel
+from .models import ImageTag, ImageLabel, ImageTagState, AnnotatedLabel, Tag, ImageInfo, PredictionLabel, TrainingSession
 
 class ImageTagDataAccess(object):
     def __init__(self,  db_provider):
@@ -314,6 +314,8 @@ class ImageTagDataAccess(object):
 
     def get_classification_map(self, class_names: set, user_id: int) -> dict:
         class_to_id = {}
+        if not class_names:
+            raise ValueError("Classification names must be present")
         try:
             conn = self._db_provider.get_connection()
             try:
@@ -407,12 +409,47 @@ class ImageTagDataAccess(object):
                 #TODO: Update some sort of training status table?
                 #self._update_training_status(training_id,conn)
                 conn.commit()
-            # logging.debug('Inserted {0} predictions for training session {1}'.format(labels_length, training_id))
             finally: cursor.close()
+            logging.debug('Inserted {0} predictions for training id {1}'.format(labels_length, training_id))
         except Exception as e:
             logging.error("An errors occured updating tagged image: {0}".format(e))
             raise
         finally: conn.close()
+
+    def add_training_session(self, training: TrainingSession, user_id: int):
+        training_id = -1
+        try:
+            conn = self._db_provider.get_connection()
+            try:
+                cursor = conn.cursor()
+                query = ("WITH t AS ( "
+                        "INSERT INTO Training_Info (TrainingDescription, ModelLocation, ClassPerfAvg, CreatedByUser) "
+                        "VALUES ({},{},{},{}) RETURNING TrainingId), "
+                        "p AS (INSERT INTO Class_Performance (TrainingId,ClassificationId,AvgPerf) "
+                            "VALUES ")
+                query.format(training.description,training.model_url,training.avg_perf,user_id)
+              
+                # Append multiple TrainingId, ClassificationId and Performance values to above query
+                # Comma is more rows, closing parenthesis is on the last row 
+                num_of_classes = len(training.class_perf)
+                for index, (classId, avgperf) in enumerate(training.class_perf):       
+                    query += "((SELECT t.TrainingId FROM t), {}, {}) ".format(classId,avgperf)
+                    if index != num_of_classes - 1: 
+                        query += ", "
+                    elif index == num_of_classes - 1:
+                        query += ") "
+                # Finally appending a query to return the new training id 
+                query += "SELECT t.TrainingId FROM t"
+                cursor.execute()
+                training_id = cursor.fetchone()[0]
+                conn.commit()
+            finally: cursor.close()
+            logging.debug('Created training session with id {} for user id {}'.format(training_id,user_id))
+        except Exception as e:
+            logging.error('An error occured saving the training session: {}'.format(e))
+            raise
+        finally: conn.close()
+        return training_id
 
     # In practice we won't be getting multiple class names per bounding box however
     # VOTT supports this. If multple class names per boounding box is common we can get more 
