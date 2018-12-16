@@ -29,11 +29,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     try:
-        req_body = req.get_json()
-        logging.info("Request json: {}".format(req_body))
-        raw_url_list = req_body["imageUrls"]
-    except ValueError:
-        logging.error("Error: Unable to decode POST body.")
+        bodyJson = req.get_json()
+        logging.info("Request json: {}".format(bodyJson))
+        if "imageUrls" not in bodyJson:
+            raise ValueError("invalid request body")
+        raw_url_list = bodyJson["imageUrls"]
+    except ValueError as ve:
+        logging.error("Error: Unable to decode POST body. Error: " + repr(ve))
         return func.HttpResponse(
             status_code=400,
             headers=DEFAULT_RETURN_HEADER,
