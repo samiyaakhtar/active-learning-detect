@@ -125,3 +125,5 @@ tag/*.csv
 # Function extension /bin and /obj folders
 Functions/pipeline/bin
 Functions/pipeline/obj
+
+.DS_Store
