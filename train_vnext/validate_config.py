@@ -59,7 +59,8 @@ def get_legacy_config(config_path: str) -> dict:
         "validation_output",
         "untagged_output",
         "inference_output_dir",
-        "python_file_directory"
+        "python_file_directory",
+        "label_map_path"
     ]
 
     result = {}

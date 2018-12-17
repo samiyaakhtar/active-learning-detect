@@ -1,6 +1,6 @@
 #!/bin/bash
-#TODO: We would like to fail on first error but it kills the SSH connection
-#set -e
+#TODO: We would like to fail on first error but it kills the SSH connection. Use "sh filename.sh" from bash
+set -e
 # Source environmental variables
 set -a
 sed -i 's/\r//g' $1
@@ -8,10 +8,6 @@ sed -i 's/\r//g' $1
 set +a
 # Updating vars in config file
 envsubst < $1 > cur_config.ini
-
-# Update images from blob storage
-echo "Updating Blob Folder"
-# TODO: download at images to config_file["image_dir"]  
 
 # Create TFRecord from images + csv file on blob storage
 echo "Creating TF Record"

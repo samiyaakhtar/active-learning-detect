@@ -29,6 +29,9 @@ def train(legacy_config, user_name, function_url):
     convert_tagged_labels_to_csv(training_data["taggedLabelData"],legacy_config.get('tagged_output'))
     convert_tagging_labels_to_csv(training_data["taggingLabelData"], legacy_config.get('tagging_output'))
 
+    #create label map
+    create_pascal_label_map(legacy_config.get('label_map_path'),legacy_config.get('classes').split(","))
+
 
 def download_images(image_urls, folder_location): 
     folder_location = os.path.expanduser(folder_location)
@@ -169,6 +172,12 @@ def process_post_training_csv(csv_path, training_id, classification_name_to_clas
 def get_image_name_from_url(image_url):
     start_idx = image_url.rfind('/')+1
     return image_url[start_idx:]
+
+def create_pascal_label_map(label_map_path: str, class_names: list):
+    with open(label_map_path, "w") as map_file:
+        for index, name in enumerate(class_names, 1):
+            map_file.write("item {{\n  id: {}\n  name: '{}'\n}}".format(index, name))
+    print("Created Pascal VOC format file: " + label_map_path)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
