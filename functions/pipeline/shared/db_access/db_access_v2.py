@@ -424,7 +424,7 @@ class ImageTagDataAccess(object):
                 cursor = conn.cursor()
                 query = ("WITH t AS ( "
                         "INSERT INTO Training_Info (TrainingDescription, ModelLocation, ClassPerfAvg, CreatedByUser) "
-                        "VALUES ('{0}','{1}',{2},{3}) RETURNING TrainingId), "
+                        "VALUES ('{}','{}',{},{}) RETURNING TrainingId), "
                         "p AS (INSERT INTO Class_Performance (TrainingId,ClassificationId,AvgPerf) "
                             "VALUES ")
                 query.format(training.description,training.model_url,training.avg_perf,user_id)
@@ -433,7 +433,7 @@ class ImageTagDataAccess(object):
                 # Comma is more rows, closing parenthesis is on the last row 
                 num_of_classes = len(training.class_perf)
                 for index, classId in enumerate(training.class_perf):       
-                    query += "((SELECT t.TrainingId FROM t), {0}, {1}) ".format(classId,training.class_perf[classId])
+                    query += "((SELECT t.TrainingId FROM t), {}, {}) ".format(classId,training.class_perf[classId])
                     if index != num_of_classes - 1: 
                         query += ", "
                     elif index == num_of_classes - 1:

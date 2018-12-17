@@ -154,9 +154,9 @@ def process_post_training_csv(csv_path, training_id, classification_name_to_clas
     return jsonpickle.encode(payload_json, unpicklable=False)
 
 def save_training_session(config, model_location, perf_location, prediction_labels_location):
+    # First, upload the model to blob storage
     cur_date_time = "{date:%Y_%m_%d_%H_%M_%S}".format(date=datetime.datetime.now())
     file_name = "frozen_inference_graph_" + cur_date_time + ".pb"
-    # First, upload the model to blob storage
     model_location = upload_model_to_blob_storage(config, model_location, file_name)
 
     # Get the mapping for class name to class id

@@ -41,7 +41,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 payload = json.loads(req.get_body())
                 payload_json = namedtuple('TrainingSession', payload.keys())(*payload.values())
                 training_id = data_access.add_training_session(payload_json, user_id)
-                logging.info("Created training id " + str(training_id))
                 return func.HttpResponse(
                     status_code=201,
                     headers=headers,
