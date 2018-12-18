@@ -424,7 +424,7 @@ class ImageTagDataAccess(object):
                 cursor = conn.cursor()
                 query = ("WITH t AS ( "
                         "INSERT INTO Training_Info (TrainingDescription, ModelLocation, ClassPerfAvg, CreatedByUser) "
-                        "VALUES ({},{},{},{}) RETURNING TrainingId), "
+                        "VALUES ('{}','{}',{},{}) RETURNING TrainingId), "
                         "p AS (INSERT INTO Class_Performance (TrainingId,ClassificationId,AvgPerf) "
                             "VALUES ")
                 query.format(training.description,training.model_url,training.avg_perf,user_id)
@@ -432,15 +432,15 @@ class ImageTagDataAccess(object):
                 # Append multiple TrainingId, ClassificationId and Performance values to above query
                 # Comma is more rows, closing parenthesis is on the last row 
                 num_of_classes = len(training.class_perf)
-                for index, (classId, avgperf) in enumerate(training.class_perf):       
-                    query += "((SELECT t.TrainingId FROM t), {}, {}) ".format(classId,avgperf)
+                for index, classId in enumerate(training.class_perf):       
+                    query += "((SELECT t.TrainingId FROM t), {}, {}) ".format(classId,training.class_perf[classId])
                     if index != num_of_classes - 1: 
                         query += ", "
                     elif index == num_of_classes - 1:
                         query += ") "
                 # Finally appending a query to return the new training id 
                 query += "SELECT t.TrainingId FROM t"
-                cursor.execute()
+                cursor.execute(query)
                 training_id = cursor.fetchone()[0]
                 conn.commit()
             finally: cursor.close()

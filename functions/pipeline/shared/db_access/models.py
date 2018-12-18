@@ -74,6 +74,13 @@ class Tag(object):
         self.y_max = y_max
         self.classificationname = classificationname
 
+    def convert_to_relative(self, width, height):
+        self.x_min = self.x_min/width
+        self.x_max = self.x_max/width
+        self.y_min = self.y_min/height
+        self.y_max = self.y_max/height
+
+
 class PredictionLabel(AnnotatedLabel):
     def __init__(self, training_id, image_id, classification_id, x_min, x_max, y_min, y_max, 
                 image_height, image_width, box_confidence=0, image_confidence= 0):
@@ -83,6 +90,12 @@ class PredictionLabel(AnnotatedLabel):
         self.image_width = image_width
         self.box_confidence = box_confidence
         self.image_confidence = image_confidence
+
+    def convert_to_absolute(self):
+        self.x_min = self.x_min*self.image_width
+        self.x_max = self.x_max*self.image_width
+        self.y_min = self.y_min*self.image_height
+        self.y_max = self.y_max*self.image_height
 
 class TrainingSession(object):
     def __init__(self, description, model_url, avg_perf: float, class_perf: dict):
