@@ -2,7 +2,7 @@ import logging
 
 import azure.functions as func
 import json
-
+import jsonpickle
 from ..shared.db_provider import get_postgres_provider
 from ..shared.db_access import ImageTagDataAccess, ImageTagState
 
@@ -14,6 +14,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     user_name = req.params.get('userName')
     tag_status = req.params.get('tagStatus')
     image_ids = req.params.get('imageId')
+    checkout = req.params.get('checkOut')
 
     # setup response object
     headers = {
@@ -25,11 +26,17 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             headers=headers,
             body=json.dumps({"error": "invalid userName given or omitted"})
         )
-    elif not tag_status and not image_ids:
+    elif not tag_status and not image_ids and not checkout:
         return func.HttpResponse(
             status_code=400,
             headers=headers,
-            body=json.dumps({"error": "either of tag status or images ids needs to be specified"})
+            body=json.dumps({"error": "either of tag status or images ids needs to be specified if not checking out images for download"})
+        )
+    elif checkout and checkout.lower() == "true" and not image_count:
+        return func.HttpResponse(
+            status_code=400,
+            headers=headers,
+            body=json.dumps({"error": "image count needs to be specified when checking out images"})
         )
     else:
         try:
@@ -37,12 +44,21 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             data_access = ImageTagDataAccess(get_postgres_provider())
             user_id = data_access.create_user(user_name)
 
-            #TODO: Merge with the existing "Download" API
-            # If client adds the querystring param api/images&vott=true 
-            # Then we should do "check out" behavior and return a VOTT json in the
-            # return payload. This is already implemented in the "Download" API
-            # Consequently this "Images" API is all about images and optionally
-            # "check out" behavior. This supports both tagging and training needs
+            # This offers download api functionality to check out n images. 
+            # We ignore the rest of query params when checkOut is set to true.
+            if checkout and checkout.lower() == "true":
+                image_count = int(image_count)
+                checked_out_images = data_access.checkout_images(image_count, user_id)
+                existing_classifications_list = data_access.get_existing_classifications()
+                return_body_json = {
+                    "images": jsonpickle.encode(checked_out_images, unpicklable=False),
+                    "classification_list": existing_classifications_list
+                }
+                return func.HttpResponse(
+                    status_code=200,
+                    headers=headers,
+                    body=json.dumps(return_body_json)
+                )
 
             # Get images info
             if image_ids:

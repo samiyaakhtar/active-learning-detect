@@ -111,12 +111,13 @@ def _download_bounds(num_images):
 
 def download(config, num_images, strategy=None):
     # TODO: better/more proper URI handling.
-    functions_url = config.get("url") + "/api/download"
+    functions_url = config.get("url") + "/api/images"
     user_name = config.get("tagging_user")
     images_to_download = _download_bounds(num_images)
     query = {
         "imageCount": images_to_download,
-        "userName": user_name
+        "userName": user_name,
+        "checkOut": "true"
     }
 
     response = requests.get(functions_url, params=query)
