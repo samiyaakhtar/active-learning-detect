@@ -32,7 +32,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             headers=headers,
             body=json.dumps({"error": "either of tag status or images ids needs to be specified if not checking out images for download"})
         )
-    elif checkout and not image_count:
+    elif checkout and checkout.lower() == "true" and not image_count:
         return func.HttpResponse(
             status_code=400,
             headers=headers,
