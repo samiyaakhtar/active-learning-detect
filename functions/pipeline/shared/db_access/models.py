@@ -84,6 +84,12 @@ class PredictionLabel(AnnotatedLabel):
         self.box_confidence = box_confidence
         self.image_confidence = image_confidence
 
+    def convert_to_relative(self):
+        self.x_min = self.x_min*self.image_width
+        self.x_max = self.x_max*self.image_width
+        self.y_min = self.y_min*self.image_height
+        self.y_max = self.y_max*self.image_height
+
 class TrainingSession(object):
     def __init__(self, description, model_url, avg_perf: float, class_perf: dict):
         self.description = description

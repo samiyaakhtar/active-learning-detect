@@ -114,7 +114,14 @@ def convert_tagged_labels_to_csv(data, tagged_output_file_path):
                 image_height = img["image_height"]
                 image_width = img["image_width"]
                 for label in img["labels"]:
-                    data = [imagelocation, label["classificationname"], label['x_min'], label['x_max'], label['y_min'], label['y_max'], image_height, image_width]
+                    data = [imagelocation, 
+                            label["classificationname"],                  
+                            float(label['x_min'])/int(image_width),
+                            float(label['x_max'])/int(image_width), 
+                            float(label['y_min'])/int(image_height), 
+                            float(label['y_max'])/int(image_height), 
+                            image_height, 
+                            image_width]
                     filewriter.writerow(data)
         print("Created tagged csv file: " + tagged_output_file_path)
     except Exception as e:
@@ -143,14 +150,15 @@ def process_post_training_csv(csv_path, training_id, classification_name_to_clas
                 prediction_label = PredictionLabel(training_id, 
                                     int(row[0].split('.')[0]), 
                                     classification_name_to_class_id[class_name], 
-                                    float(row[2])*float(row[7]), 
-                                    float(row[3])*float(row[7]), 
-                                    float(row[4])*float(row[6]), 
-                                    float(row[5])*float(row[6]), 
+                                    float(row[2]), 
+                                    float(row[3]), 
+                                    float(row[4]), 
+                                    float(row[5]), 
                                     int(row[6]), 
                                     int(row[7]), 
                                     float(row[8]), 
                                     float(row[9]))
+                prediction_label.convert_to_relative()
                 payload_json.append(prediction_label)
     return jsonpickle.encode(payload_json, unpicklable=False)
 
