@@ -202,7 +202,7 @@ def write_vott_data(image_dir, json_resp):
 
 
 def upload(config):
-    functions_url = config.get("url") + "/api/upload"
+    functions_url = config.get("url") + "/api/labels"
     user_name = config.get("tagging_user")
     tagging_location = pathlib.Path(
         os.path.expanduser(config.get("tagging_location"))
@@ -215,7 +215,8 @@ def upload(config):
         json_data = json.load(json_file)
     process_json = process_vott_json(json_data)
     query = {
-        "userName": user_name
+        "userName": user_name,
+        "upload": "true"
     }
 
     response = requests.post(functions_url, json=process_json, params=query)
