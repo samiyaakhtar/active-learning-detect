@@ -117,7 +117,7 @@ def download(config, num_images, strategy=None):
     query = {
         "imageCount": images_to_download,
         "userName": user_name,
-        "vott": "true"
+        "checkOut": "true"
     }
 
     response = requests.get(functions_url, params=query)

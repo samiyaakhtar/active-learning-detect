@@ -14,7 +14,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     user_name = req.params.get('userName')
     tag_status = req.params.get('tagStatus')
     image_ids = req.params.get('imageId')
-    checkout = req.params.get('vott')
+    checkout = req.params.get('checkOut')
 
     # setup response object
     headers = {
@@ -45,7 +45,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             user_id = data_access.create_user(user_name)
 
             # This offers download api functionality to check out n images. 
-            # We ignore the rest of query params when vott is set to true.
+            # We ignore the rest of query params when checkOut is set to true.
             if checkout and checkout.lower() == "true":
                 image_count = int(image_count)
                 checked_out_images = data_access.checkout_images(image_count, user_id)
