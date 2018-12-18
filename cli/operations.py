@@ -63,15 +63,15 @@ def onboard_folder(config, folder_name):
     }
 
     response = requests.post(functions_url, json=data, params=query)
+    response_json = response.json()
     response.raise_for_status()
 
-    print("Successfully uploaded images.")
-    #TODO: Recent Onboarding refactoring doesn't return ImageURLs anymore
-    # json_resp = response.json()
-    # count = len(json_resp['imageUrls'])
-    # print("Successfully uploaded " + str(count) + " images.")
-    # for url in json_resp['imageUrls']:
-    #     print(url)
+    if 'Success' in response_json:
+        print("Successfully onboarded {0} images.".format(len(images)))
+    if 'copy_failed' in response_json:
+        print("Failed to copy following images to permanent storage: " + str(response_json['copy_failed']))
+    if 'delete_failed' in response_json:
+        print("Failed to delete following images from permanent storage: " + str(response_json['delete_failed']))
 
 
 def onboard_container(config, account, key, container):
