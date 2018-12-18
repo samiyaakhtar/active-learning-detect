@@ -116,6 +116,7 @@ def convert_tagged_labels_to_csv(data, tagged_output_file_path):
                 for label in img["labels"]:
                     # Create new tag and convert it to relative coordinates
                     tag = Tag(label["classificationname"], float(label['x_min']), float(label['x_max']), float(label['y_min']), float(label['y_max']))
+                    # Save it in relative coordinates for training scripts
                     tag.convert_to_relative(int(image_width), int(image_height))
                     data = [imagelocation, 
                             tag.classificationname,                  
@@ -161,6 +162,7 @@ def process_post_training_csv(csv_path, training_id, classification_name_to_clas
                                     int(row[7]), 
                                     float(row[8]), 
                                     float(row[9]))
+                # Save in the database in absolute terms to have parity
                 prediction_label.convert_to_absolute()
                 payload_json.append(prediction_label)
     return jsonpickle.encode(payload_json, unpicklable=False)
