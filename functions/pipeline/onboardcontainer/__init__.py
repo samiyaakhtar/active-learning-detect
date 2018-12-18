@@ -5,6 +5,7 @@ import azure.functions as func
 from urlpath import URL
 from datetime import datetime, timedelta
 from ..shared.constants import ImageFileType
+from ..shared.storage_utils import get_filepath_from_url
 
 from azure.storage.blob import BlockBlobService, BlobPermissions
 from azure.storage.queue import QueueService, QueueMessageFormat
@@ -45,8 +46,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     # Create blob service for storage account (retrieval source)
-    blob_service = BlockBlobService(account_name=storage_account,
-                                    account_key=storage_account_key)
+    blob_service = BlockBlobService(
+        account_name=storage_account,
+        account_key=storage_account_key)
 
     # Queue service for perm storage and queue
     queue_service = QueueService(
@@ -89,7 +91,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                     "imageUrl": signed_url.as_uri(),
                     "fileName": str(blob_url.name),
                     "fileExtension": str(blob_url.suffix),
-                    "directoryComponents": __get_filepath_from_url(blob_url, storage_container),
+                    "directoryComponents": get_filepath_from_url(blob_url, storage_container),
                     "userName": user_name
                 }
 
@@ -107,20 +109,3 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         logging.error("ERROR: Could not build blob object list. Exception: " + str(e))
         return func.HttpResponse("ERROR: Could not get list of blobs in storage_container={0}. Exception={1}".format(
             storage_container, e), status_code=500)
-
-
-def __get_filepath_from_url(blob_url: URL, storage_container):
-    blob_uri = blob_url.path
-    return __remove_postfix(__remove_prefix(blob_uri, '/' + storage_container), '/' + blob_url.name)
-
-
-def __remove_prefix(text, prefix):
-    if text.startswith(prefix):
-        return text[len(prefix):]
-    return text
-
-
-def __remove_postfix(text, postfix):
-    if not text.endswith(postfix):
-        return text
-    return text[:len(text)-len(postfix)]

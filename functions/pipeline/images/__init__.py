@@ -5,6 +5,7 @@ import json
 import jsonpickle
 from ..shared.db_provider import get_postgres_provider
 from ..shared.db_access import ImageTagDataAccess, ImageTagState
+from ..shared.storage_utils import get_signed_url_for_permstore_blob
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -69,6 +70,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 images_by_tag_status = data_access.get_images_by_tag_status(tag_status.split(','), image_count)
                 logging.debug("Received {0} images in tag status {1}".format(len(images_by_tag_status),tag_status))
                 image_infos = data_access.get_image_info_for_image_ids(list(images_by_tag_status.keys()))
+
+            # For each image_info in image_infos, update image_info.location a signed url.
+            for image_info in image_infos:
+                signed_url_location = get_signed_url_for_permstore_blob(image_info['location'])
+                image_info['location'] = signed_url_location
 
             content = json.dumps(image_infos)
             return func.HttpResponse(
