@@ -139,13 +139,14 @@ def process_post_training_csv(csv_path, training_id, classification_name_to_clas
         for row in reader:
             class_name = row[1]
             if class_name in classification_name_to_class_id:
+                # Convert the bounding boxes to be with respect to image dimensions
                 prediction_label = PredictionLabel(training_id, 
                                     int(row[0].split('.')[0]), 
                                     classification_name_to_class_id[class_name], 
-                                    float(row[2])*float(row[6]), 
-                                    float(row[3])*float(row[6]), 
-                                    float(row[4])*float(row[7]), 
-                                    float(row[5])*float(row[7]), 
+                                    float(row[2])*float(row[7]), 
+                                    float(row[3])*float(row[7]), 
+                                    float(row[4])*float(row[6]), 
+                                    float(row[5])*float(row[6]), 
                                     int(row[6]), 
                                     int(row[7]), 
                                     float(row[8]), 
@@ -155,38 +156,36 @@ def process_post_training_csv(csv_path, training_id, classification_name_to_clas
 
 def save_training_session(config, model_location, perf_location, prediction_labels_location):
     # First, upload the model to blob storage
-    cur_date_time = "{date:%Y_%m_%d_%H_%M_%S}".format(date=datetime.datetime.now())
+    cur_date_time = "{date:%Y_%m_%d_%H_%M_%S}".format(date=datetime.datetime.utcnow())
     file_name = "frozen_inference_graph_" + cur_date_time + ".pb"
-    model_location = upload_model_to_blob_storage(config, model_location, file_name)
+    model_location = upload_model_to_blob_storage(config, model_location, file_name, config.get("tagging_user"))
 
     # Get the mapping for class name to class id
-    overall_average, classification_name_to_class_id = get_average_and_classification_map(perf_location, config.get("tagging_user"), config.get("url"))
+    overall_average, classification_name_to_class_id, avg_dictionary = process_classifications(perf_location, config.get("tagging_user"), config.get("url"))
 
     # Create a new training session in db and get its id
-    training_id = construct_new_training_session(perf_location, classification_name_to_class_id, overall_average, cur_date_time, model_location, config.get("tagging_user"), config.get("url"))
+    training_id = construct_new_training_session(perf_location, classification_name_to_class_id, overall_average, cur_date_time, model_location, avg_dictionary, config.get("tagging_user"), config.get("url"))
 
     # Upload prediction labels to the db
     upload_data_post_training(prediction_labels_location, classification_name_to_class_id, training_id, config.get("tagging_user"), config.get("url"))
 
-def upload_model_to_blob_storage(config, model_location, file_name):
+def upload_model_to_blob_storage(config, model_location, file_name, user_name):
     blob_storage = BlobStorage.get_azure_storage_client(config)
+    blob_metadata = {
+            "userFilePath": model_location,
+            "uploadUser": user_name
+        }
     uri = 'https://' + config.get("storage_account") + '.blob.core.windows.net/' + config.get("storage_container") + '/' + file_name
     blob_storage.create_blob_from_path(
             config.get("storage_container"),
             file_name,
-            model_location
+            model_location,
+            metadata=blob_metadata
         )
     print("Model uploaded at " + str(uri))
     return uri
 
-def construct_new_training_session(perf_location, classification_name_to_class_id, overall_average, training_description, model_location, user_name, function_url):
-    avg_dictionary = {}
-    with open(perf_location) as csvfile:
-        reader = csv.reader(csvfile, delimiter=',')
-        next(reader, None) #Skip header
-        for row in reader:
-            if row[0] != "NULL" and row[0] in classification_name_to_class_id:
-                avg_dictionary[classification_name_to_class_id[row[0]]] = row[1]
+def construct_new_training_session(perf_location, classification_name_to_class_id, overall_average, training_description, model_location, avg_dictionary, user_name, function_url):
     training_session = TrainingSession(training_description, model_location, overall_average, avg_dictionary)
     query = {
         "userName": user_name
@@ -198,14 +197,15 @@ def construct_new_training_session(perf_location, classification_name_to_class_i
     print("Created a new training session with id: " + str(training_id))
     return training_id
 
-def get_average_and_classification_map(csv_file, user_name,function_url):
+def process_classifications(perf_location, user_name,function_url):
+    # First build query string to get classification map
     classes = ""
     query = {
         "userName": user_name
     }
     function_url = function_url + "/api/classification"
     overall_average = 0.0
-    with open(csv_file) as f:
+    with open(perf_location) as f:
         content = csv.reader(f, delimiter=',')
         next(content, None) #Skip header
         for line in content:
@@ -219,7 +219,17 @@ def get_average_and_classification_map(csv_file, user_name,function_url):
     print("Getting classification map for classes " + query["className"])
     response = requests.get(function_url, params=query)
     classification_name_to_class_id = response.json()
-    return overall_average, classification_name_to_class_id
+
+    # Now that we have classification map, build the dictionary that maps class id : average
+    avg_dictionary = {}
+    with open(perf_location) as csvfile:
+        reader = csv.reader(csvfile, delimiter=',')
+        next(reader, None) #Skip header
+        for row in reader:
+            if row[0] != "NULL" and row[0] in classification_name_to_class_id:
+                avg_dictionary[classification_name_to_class_id[row[0]]] = row[1]
+
+    return overall_average, classification_name_to_class_id, avg_dictionary
 
 def get_image_name_from_url(image_url):
     start_idx = image_url.rfind('/')+1
