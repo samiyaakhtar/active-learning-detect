@@ -46,7 +46,7 @@ TAGGING_IMAGE_DIR=${TAGGING:TAGGING_LOCATION}/AllImages
 
 #### Initialize a dataset/Onboard an existing dataset.
 
-Usage: `python3 -m cli onboard -f /path/to/images/`
+Usage: `python3 -m cli.cli onboard -f /path/to/images/`
 
 Assuming your directory `/path/to/images` is a flat directory of images, you can use this CLI invocation to upload your images to a temporary storage container.
 
@@ -54,7 +54,7 @@ The onboarding function is then invoked, processing your images into the databas
 
 #### Download
 
-Usage: `python3 -m cli download -n 50`
+Usage: `python3 -m cli.cli download -n 50`
 
 Downloads 50 images to the location identified by `TAGGING_LOCATION` in your config.
 There is an upper bound of 100 images that can be downloaded at present.
@@ -63,7 +63,7 @@ Also generated is a VoTT json file containing any existing tags and labels.
 
 #### Upload tags
 
-Usage: `python3 -m cli upload`
+Usage: `python3 -m cli.cli upload`
 
 Uploads the VoTT json file to be processed into the database. Will also delete the image directory
 identified at `TAGGING_LOCATION`, so the next `download` cycle will commence without issue.
