@@ -117,4 +117,5 @@ def __create_ImageTag_list(image_id, tags_list):
     image_tags = []
     for tag in tags_list:
         image_tags.append(ImageTag(image_id, tag['x1'], tag['x2'], tag['y1'], tag['y2'], tag['classes']))
+
     return image_tags
