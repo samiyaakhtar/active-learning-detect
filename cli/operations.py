@@ -32,7 +32,7 @@ def supported_file_type(file_name):
 # TODO We should create the container if it does not exist
 def onboard_folder(config, folder_name):
     blob_storage = BlobStorage.get_azure_storage_client(config)
-    uri = 'https://' + config.get("storage_account") + '.blob.core.windows.net/' + config.get("storage_container") + '/'
+    uri = 'https://' + config.get("storage_account") + '.blob.core.windows.net/' + config.get("storage_temp_container") + '/'
     functions_url = config.get('url') + '/api/onboarding'
     user_name = config.get("tagging_user")
     images = []
@@ -46,7 +46,7 @@ def onboard_folder(config, folder_name):
 
         # Upload the created file, use image name for the blob name
         blob_storage.create_blob_from_path(
-            config.get("storage_container"),
+            config.get("storage_temp_container"),
             image,
             local_path,
             content_settings=ContentSettings(content_type='image/png')
