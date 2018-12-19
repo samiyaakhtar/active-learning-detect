@@ -183,66 +183,83 @@ def save_training_session(config, model_location, perf_location, prediction_labe
     upload_data_post_training(prediction_labels_location, classification_name_to_class_id, training_id, config.get("tagging_user"), config.get("url"))
 
 def upload_model_to_blob_storage(config, model_location, file_name, user_name):
-    blob_storage = BlobStorage.get_azure_storage_client(config)
-    blob_metadata = {
-            "userFilePath": model_location,
-            "uploadUser": user_name
-        }
-    uri = 'https://' + config.get("storage_account") + '.blob.core.windows.net/' + config.get("storage_container") + '/' + file_name
-    blob_storage.create_blob_from_path(
-            config.get("storage_container"),
-            file_name,
-            model_location,
-            metadata=blob_metadata
-        )
-    print("Model uploaded at " + str(uri))
-    return uri
+    try:
+        blob_storage = BlobStorage.get_azure_storage_client(config)
+        blob_metadata = {
+                "userFilePath": model_location,
+                "uploadUser": user_name
+            }
+        uri = 'https://' + config.get("storage_account") + '.blob.core.windows.net/' + config.get("storage_container") + '/' + file_name
+        blob_storage.create_blob_from_path(
+                config.get("storage_container"),
+                file_name,
+                model_location,
+                metadata=blob_metadata
+            )
+        print("Model uploaded at " + str(uri))
+        return uri
+    except Exception as e:
+        print("Issue uploading model to cloud storage: {}",e)
 
 def construct_new_training_session(perf_location, classification_name_to_class_id, overall_average, training_description, model_location, avg_dictionary, user_name, function_url):
-    training_session = TrainingSession(training_description, model_location, overall_average, avg_dictionary)
-    query = {
-        "userName": user_name
-    }
-    function_url = function_url + "/api/train"
-    payload = jsonpickle.encode(training_session, unpicklable=False)
-    response = requests.post(function_url, params=query, json=payload)
-    training_id = int(response.json())
-    print("Created a new training session with id: " + str(training_id))
-    return training_id
+    try:
+        training_session = TrainingSession(training_description, model_location, overall_average, avg_dictionary)
+        query = {
+            "userName": user_name
+        }
+        function_url = function_url + "/api/train"
+        payload = jsonpickle.encode(training_session, unpicklable=False)
+        response = requests.post(function_url, params=query, json=payload)
+        response.raise_for_status()
+        training_id = int(response.json())
+        print("Created a new training session with id: " + str(training_id))
+        return training_id
+    except requests.exceptions.HTTPError as e:
+        print("HTTP Error when saving training session: {}",e.response.content)
+        raise
+    except Exception as e:
+        print("Issue saving training session: {}",e)
 
 def process_classifications(perf_location, user_name,function_url):
-    # First build query string to get classification map
-    classes = ""
-    query = {
-        "userName": user_name
-    }
-    function_url = function_url + "/api/classification"
-    overall_average = 0.0
-    with open(perf_location) as f:
-        content = csv.reader(f, delimiter=',')
-        next(content, None) #Skip header
-        for line in content:
-            class_name = line[0].strip()
-            if class_name == "Average":
-                overall_average = line[1]
-            elif class_name not in classes and class_name != "NULL":
-                classes = classes + class_name + ","
-    
-    query["className"] = classes[:-1]
-    print("Getting classification map for classes " + query["className"])
-    response = requests.get(function_url, params=query)
-    classification_name_to_class_id = response.json()
+    try:
+        # First build query string to get classification map
+        classes = ""
+        query = {
+            "userName": user_name
+        }
+        function_url = function_url + "/api/classification"
+        overall_average = 0.0
+        with open(perf_location) as f:
+            content = csv.reader(f, delimiter=',')
+            next(content, None) #Skip header
+            for line in content:
+                class_name = line[0].strip()
+                if class_name == "Average":
+                    overall_average = line[1]
+                elif class_name not in classes and class_name != "NULL":
+                    classes = classes + class_name + ","
+        
+        query["className"] = classes[:-1]
+        print("Getting classification map for classes " + query["className"])
+        response = requests.get(function_url, params=query)
+        response.raise_for_status()
+        classification_name_to_class_id = response.json()
 
-    # Now that we have classification map, build the dictionary that maps class id : average
-    avg_dictionary = {}
-    with open(perf_location) as csvfile:
-        reader = csv.reader(csvfile, delimiter=',')
-        next(reader, None) #Skip header
-        for row in reader:
-            if row[0] != "NULL" and row[0] in classification_name_to_class_id:
-                avg_dictionary[classification_name_to_class_id[row[0]]] = row[1]
+        # Now that we have classification map, build the dictionary that maps class id : average
+        avg_dictionary = {}
+        with open(perf_location) as csvfile:
+            reader = csv.reader(csvfile, delimiter=',')
+            next(reader, None) #Skip header
+            for row in reader:
+                if row[0] != "NULL" and row[0] in classification_name_to_class_id:
+                    avg_dictionary[classification_name_to_class_id[row[0]]] = row[1]
 
-    return overall_average, classification_name_to_class_id, avg_dictionary
+        return overall_average, classification_name_to_class_id, avg_dictionary
+    except requests.exceptions.HTTPError as e:
+        print("HTTP Error when getting classification map: {}",e.response.content)
+        raise
+    except Exception as e:
+        print("Issue processing classfication: {}",e) 
 
 def get_image_name_from_url(image_url):
     start_idx = image_url.rfind('/')+1
@@ -269,8 +286,12 @@ if __name__ == "__main__":
     if operation == "start":
         train(legacy_config, config.get("tagging_user"), config.get("url"))
     elif operation == "save":
-        # Upload the model saved at ${inference_output_dir}/frozen_inference_graph.pb
+        # The model is saved relative to the python_file_directory in 
+        # ${inference_output_dir}/frozen_inference_graph.pb
+        path_to_model = os.path.join(legacy_config.get("python_file_directory"),
+            legacy_config.get("inference_output_dir"),
+            "/frozen_inference_graph.pb")
         save_training_session(config, 
-                                legacy_config.get("inference_output_dir") + "/frozen_inference_graph.pb",
-                                legacy_config.get("validation_output"),
-                                legacy_config.get("untagged_output"))
+            path_to_model,
+            legacy_config.get("validation_output"),
+            legacy_config.get("untagged_output"))

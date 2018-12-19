@@ -39,6 +39,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 )
             elif req.method == "POST":
                 payload = json.loads(req.get_body())
+                logging.debug("Payload: {}".format(payload))
                 payload_json = namedtuple('TrainingSession', payload.keys())(*payload.values())
                 training_id = data_access.add_training_session(payload_json, user_id)
                 return func.HttpResponse(

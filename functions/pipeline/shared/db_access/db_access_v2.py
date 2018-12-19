@@ -427,7 +427,7 @@ class ImageTagDataAccess(object):
                         "VALUES ('{}','{}',{},{}) RETURNING TrainingId), "
                         "p AS (INSERT INTO Class_Performance (TrainingId,ClassificationId,AvgPerf) "
                             "VALUES ")
-                query.format(training.description,training.model_url,training.avg_perf,user_id)
+                query = query.format(training.description,training.model_url,training.avg_perf,user_id)
               
                 # Append multiple TrainingId, ClassificationId and Performance values to above query
                 # Comma is more rows, closing parenthesis is on the last row 
