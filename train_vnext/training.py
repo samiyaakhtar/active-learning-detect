@@ -8,6 +8,7 @@ from utils.blob_utils import BlobStorage
 from utils.config import Config
 from .validate_config import get_legacy_config, initialize_training_location
 import urllib.request
+from urlpath import URL
 import sys
 import time
 import jsonpickle
@@ -48,7 +49,8 @@ def download_images(image_urls, folder_location):
 
     try:
         for image_url in image_urls:
-            file_name = get_image_name_from_url(image_url)
+            parsed_url = URL(image_url)
+            file_name = parsed_url.name
             if file_name not in existing_files:
                 with urllib.request.urlopen(image_url) as response, open(folder_location + '/' + str(file_name), 'wb') as out_file:
                     data = response.read() # a `bytes` object
@@ -200,6 +202,7 @@ def upload_model_to_blob_storage(config, model_location, file_name, user_name):
         return uri
     except Exception as e:
         print("Issue uploading model to cloud storage: {}",e)
+        raise
 
 def construct_new_training_session(perf_location, classification_name_to_class_id, overall_average, training_description, model_location, avg_dictionary, user_name, function_url):
     try:
@@ -219,6 +222,7 @@ def construct_new_training_session(perf_location, classification_name_to_class_i
         raise
     except Exception as e:
         print("Issue saving training session: {}",e)
+        raise
 
 def process_classifications(perf_location, user_name,function_url):
     try:
@@ -235,7 +239,7 @@ def process_classifications(perf_location, user_name,function_url):
             for line in content:
                 class_name = line[0].strip()
                 if class_name == "Average":
-                    overall_average = line[1]
+                    overall_average =  line[1] if line[1].isdigit() else 0
                 elif class_name not in classes and class_name != "NULL":
                     classes = classes + class_name + ","
         
@@ -290,7 +294,7 @@ if __name__ == "__main__":
         # ${inference_output_dir}/frozen_inference_graph.pb
         path_to_model = os.path.join(legacy_config.get("python_file_directory"),
             legacy_config.get("inference_output_dir"),
-            "/frozen_inference_graph.pb")
+            "frozen_inference_graph.pb")
         save_training_session(config, 
             path_to_model,
             legacy_config.get("validation_output"),
