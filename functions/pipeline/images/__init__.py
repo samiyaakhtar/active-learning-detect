@@ -51,6 +51,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 image_count = int(image_count)
                 checked_out_images = data_access.checkout_images(image_count, user_id)
                 existing_classifications_list = data_access.get_existing_classifications()
+                # update image locations to signed urls 
+                for image in checked_out_images:
+                    signed_url_location = get_signed_url_for_permstore_blob(image.imagelocation)
+                    image.imagelocation = signed_url_location
                 return_body_json = {
                     "images": jsonpickle.encode(checked_out_images, unpicklable=False),
                     "classification_list": existing_classifications_list
