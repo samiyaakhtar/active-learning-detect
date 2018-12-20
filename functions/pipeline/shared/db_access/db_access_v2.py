@@ -253,16 +253,14 @@ class ImageTagDataAccess(object):
         return list(classification_set)
 
     def update_incomplete_images(self, list_of_image_ids, user_id):
-        #TODO: Make sure the image ids are in a TAG_IN_PROGRESS state
-        self._update_images(list_of_image_ids,ImageTagState.INCOMPLETE_TAG,user_id, self._db_provider.get_connection())
+        self._update_images(list_of_image_ids,ImageTagState.INCOMPLETE_TAG,user_id, self._db_provider.get_connection(), ImageTagState.TAG_IN_PROGRESS)
         logging.debug("Updated {0} image(s) to the state {1}".format(len(list_of_image_ids),ImageTagState.INCOMPLETE_TAG.name))
 
     def update_completed_untagged_images(self,list_of_image_ids, user_id):
-        #TODO: Make sure the image ids are in a TAG_IN_PROGRESS state
-        self._update_images(list_of_image_ids,ImageTagState.COMPLETED_TAG,user_id, self._db_provider.get_connection())
+        self._update_images(list_of_image_ids,ImageTagState.COMPLETED_TAG,user_id, self._db_provider.get_connection(), ImageTagState.TAG_IN_PROGRESS)
         logging.debug("Updated {0} image(s) to the state {1}".format(len(list_of_image_ids),ImageTagState.COMPLETED_TAG.name))
 
-    def _update_images(self, list_of_image_ids, new_image_tag_state, user_id, conn):
+    def _update_images(self, list_of_image_ids, new_image_tag_state, user_id, conn, verify_old_tag_state = None):
         if not isinstance(new_image_tag_state, ImageTagState):
             raise TypeError('new_image_tag_state must be an instance of Direction Enum')
 
@@ -280,7 +278,12 @@ class ImageTagDataAccess(object):
                     images_to_update = '{0}'.format(', '.join(image_ids_as_strings))
                     # TODO: find another way to do string subsitution that doesn't break this query
                     query = "UPDATE Image_Tagging_State SET TagStateId = {0}, ModifiedByUser = {2}, ModifiedDtim = now() WHERE ImageId IN ({1})"
-                    cursor.execute(query.format(new_image_tag_state,images_to_update,user_id))
+                    if not verify_old_tag_state:
+                        query = query.format(new_image_tag_state,images_to_update,user_id)
+                    else:
+                        inner_verify = "SELECT ImageId from Image_Tagging_State where TagStateId = {0} and ImageId IN ({1})".format(verify_old_tag_state, images_to_update)
+                        query = query.format(new_image_tag_state,inner_verify,user_id)
+                    cursor.execute(query)
                     conn.commit()
                 finally: cursor.close()
             else:
@@ -368,7 +371,7 @@ class ImageTagDataAccess(object):
                                                             label.x_min,label.x_max,label.y_min,label.y_max,user_id)
                     if i != labels_length-1: query+=","
                 cursor.execute(query)
-                self._update_images(all_image_ids,ImageTagState.COMPLETED_TAG,user_id,conn)
+                self._update_images(all_image_ids,ImageTagState.COMPLETED_TAG,user_id,conn, ImageTagState.TAG_IN_PROGRESS)
                 conn.commit()
             #logging.debug("Updated status for {0} images".format(len(all_image_ids)))
             finally: cursor.close()
