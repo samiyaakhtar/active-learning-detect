@@ -11,7 +11,8 @@ from utils.config import (
     STORAGE_SECTION,
     STORAGE_KEY,
     STORAGE_ACCOUNT,
-    STORAGE_CONTAINER,
+    STORAGE_TEMP_CONTAINER,
+    STORAGE_PERM_CONTAINER,
     TAGGING_SECTION,
     TAGGING_LOCATION_KEY,
     TAGGING_USER_KEY
@@ -97,7 +98,8 @@ class TestConfig(unittest.TestCase):
                 STORAGE_SECTION: {
                     STORAGE_KEY: "test",
                     STORAGE_ACCOUNT: "test",
-                    STORAGE_CONTAINER: "test",
+                    STORAGE_TEMP_CONTAINER: "test",
+                    STORAGE_PERM_CONTAINER: "test",
                 },
                 FUNCTIONS_SECTION: {
                     FUNCTIONS_KEY: "test",
