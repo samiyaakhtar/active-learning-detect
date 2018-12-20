@@ -191,9 +191,9 @@ def upload_model_to_blob_storage(config, model_location, file_name, user_name):
                 "userFilePath": model_location,
                 "uploadUser": user_name
             }
-        uri = 'https://' + config.get("storage_account") + '.blob.core.windows.net/' + config.get("storage_container") + '/' + file_name
+        uri = 'https://' + config.get("storage_account") + '.blob.core.windows.net/' + config.get("storage_perm_container") + '/' + file_name
         blob_storage.create_blob_from_path(
-                config.get("storage_container"),
+                config.get("storage_perm_container"),
                 file_name,
                 model_location,
                 metadata=blob_metadata

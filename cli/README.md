@@ -20,7 +20,8 @@ FUNCTIONS_URL=https://mytagmanagement.azurewebsites.net/
 [STORAGE]
 STORAGE_ACCOUNT=
 STORAGE_KEY=
-STORAGE_CONTAINER=vott
+STORAGE_TEMP_CONTAINER=temp-container
+STORAGE_PERM_CONTAINER=perm-container
 
 [TAGGING]
 TAGGING_LOCATION=~/taggingdata
@@ -33,7 +34,8 @@ TAGGING_IMAGE_DIR=${TAGGING:TAGGING_LOCATION}/AllImages
 
 `STORAGE_ACCOUNT` is the name of the Azure Storage Account used to upload images
 `STORAGE_KEY` is the secret key of the Azure Storage Account
-`STORAGE_CONTAINER` is the name of the container where the CLI deposits your image files.
+`STORAGE_TEMP_CONTAINER` is the name of the temporary container where the CLI deposits your image files while onboarding, and later copies them to perm storage.
+`STORAGE_PERM_CONTAINER` is the name of the container where the CLI deposits your image files after onboarding, and the model after training.
 
 `TAGGING_LOCATION` is the location on the user's machine where media will be downloaded
 `TAGGING_USER` is your username.
